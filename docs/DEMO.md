@@ -1,18 +1,29 @@
 # Demo de Vectaryx
 
 Una demo que puede usar cualquiera desde su celular, sin instalar nada y sin
-pagar hosting. Carta real de **Punto Azul** (113 platos, 16 categorías, fotos).
+pagar hosting. Van **dos restaurantes reales** sobre la misma app, que es la
+forma más corta de enseñar el multitenant:
+
+| Restaurante | Slug | Carta | Marca |
+| --- | --- | --- | --- |
+| **Punto Azul** (cevichería) | `punto-azul` | 113 platos, 16 categorías, 33 con foto | azul `#0a5aa8` |
+| **Lanzhou Noodles** (fideos) | `lanzhou-noodles` | 34 platos, 5 categorías, nombre en chino y traducción debajo | verde `#1f5c3d` |
+
+Abrir las dos cartas una al lado de la otra es el argumento de venta: misma app,
+otra marca, otra carta, otro idioma.
 
 ## Qué verá quien entre
+
+Cambia `<slug>` por `punto-azul` o `lanzhou-noodles`.
 
 | Pantalla | URL | Acceso |
 | --- | --- | --- |
 | Portada (índice de la demo) | `/` | libre |
-| Cliente en la mesa | `/r/punto-azul/mesa/1` … `/mesa/10` | libre |
+| Cliente en la mesa | `/r/<slug>/mesa/1` … `/mesa/10` | libre |
 | Seguimiento del pedido | `/pedido/<id>` (sale solo al pedir) | libre |
-| Cocina | `/cocina/punto-azul` | PIN del personal **1234** |
-| Caja | `/caja/punto-azul` | PIN del personal **1234** |
-| Administración del local | `/admin/punto-azul` | PIN del dueño **1234** |
+| Cocina | `/cocina/<slug>` | PIN del personal **1234** |
+| Caja | `/caja/<slug>` | PIN del personal **1234** |
+| Administración del local | `/admin/<slug>` | PIN del dueño **1234** |
 | Panel de plataforma (operador) | `/plataforma` | clave privada (`VECTARYX_PLATFORM_KEY`) |
 
 > En la demo ambos PINes son `1234` para poder pasear por todo. En un local real
@@ -23,6 +34,10 @@ El recorrido que convence en 2 minutos: abre **Cliente** en el celular y
 **Cocina** en la laptop. Pides desde el celular → el pedido aparece en cocina en
 menos de 3 segundos → avanzas el estado y el cliente lo ve cambiar solo → el
 cliente pulsa "Ya pagué" → se enciende en **Caja** para confirmarlo.
+
+Si además quieres enseñar el multitenant, abre las dos cartas en pestañas
+distintas: cada local tiene su color, su carta y su numeración de pedidos del
+día (los dos empiezan en #1, no comparten nada).
 
 > Los números de Yape y Plin de la demo (`987 654 321`) son **ficticios**. Con
 > `VECTARYX_DEMO=1` la pantalla de pago lo advierte. No pongas ahí números reales

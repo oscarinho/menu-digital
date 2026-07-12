@@ -1,43 +1,36 @@
 import Link from "next/link";
+import { initialsOf } from "@/lib/brand";
 
-// Portada de la demo: cada tarjeta abre una de las pantallas del producto con
-// los datos reales de la carta de Punto Azul.
+// Portada de la demo. Dos restaurantes de verdad sobre la misma app: es la forma
+// más corta de enseñar que cada local trae su carta, su marca y hasta su idioma.
+const TENANTS = [
+  {
+    slug: "punto-azul",
+    name: "Punto Azul",
+    brand: "#0a5aa8",
+    tag: "Cevichería · Lima",
+    text: "113 platos, 33 con foto. La carta real que se sirve hoy en el local.",
+  },
+  {
+    slug: "lanzhou-noodles",
+    name: "Lanzhou Noodles",
+    brand: "#1f5c3d",
+    tag: "Fideos de Lanzhou · Lima",
+    text: "34 platos con el nombre en chino y la traducción debajo, como la carta impresa.",
+  },
+];
+
 const SURFACES = [
   {
-    href: "/r/punto-azul/mesa/1",
+    key: "cliente",
     icon: "🍽️",
     title: "Cliente · Mesa 1",
-    text: "Lo que ve quien escanea el QR: la carta con fotos, el detalle de cada plato y el pedido desde el celular.",
     hint: "Empieza por aquí",
+    href: (s: string) => `/r/${s}/mesa/1`,
   },
-  {
-    href: "/cocina/punto-azul",
-    icon: "👨‍🍳",
-    title: "Cocina",
-    text: "El pedido cae al instante. Un toque lo avanza: recibido → en preparación → listo → entregado.",
-    hint: "PIN 1234",
-  },
-  {
-    href: "/caja/punto-azul",
-    icon: "💳",
-    title: "Caja",
-    text: "Cuentas por mesa. Los pagos que el cliente informa por Yape o Plin se resaltan para confirmarlos.",
-    hint: "PIN 1234",
-  },
-  {
-    href: "/admin/punto-azul",
-    icon: "⚙️",
-    title: "Administración",
-    text: "Carta, precios, agotados, mesas con su QR imprimible, logo y color de marca del local.",
-    hint: "PIN 1234",
-  },
-  {
-    href: "/plataforma",
-    icon: "🏢",
-    title: "Plataforma (operador)",
-    text: "Alta de restaurantes, mensualidad y suspensión. Es el panel con el que Vectaryx cobra.",
-    hint: "Clave privada",
-  },
+  { key: "cocina", icon: "👨‍🍳", title: "Cocina", hint: "PIN 1234", href: (s: string) => `/cocina/${s}` },
+  { key: "caja", icon: "💳", title: "Caja", hint: "PIN 1234", href: (s: string) => `/caja/${s}` },
+  { key: "admin", icon: "⚙️", title: "Administración", hint: "PIN 1234", href: (s: string) => `/admin/${s}` },
 ];
 
 export default function Home() {
@@ -79,47 +72,106 @@ export default function Home() {
           efectivo. Sin apps que instalar y sin comisiones de delivery.
         </p>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
-          {SURFACES.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="p-6 transition hover:-translate-y-0.5"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border-2)",
-                borderRadius: 22,
-                boxShadow: "0 20px 40px -34px rgba(33,29,24,.35)",
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-3xl" aria-hidden>
-                  {s.icon}
-                </span>
-                <span
-                  className="ml-auto px-2.5 py-1 text-[11.5px] font-extrabold"
+        <p
+          className="mt-10 text-[13px] font-extrabold uppercase tracking-[0.12em]"
+          style={{ color: "var(--text-faint)" }}
+        >
+          Dos restaurantes, la misma app
+        </p>
+
+        {TENANTS.map((t) => (
+          <section
+            key={t.slug}
+            className="mt-4 overflow-hidden"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-2)",
+              borderRadius: 22,
+              boxShadow: "0 20px 40px -34px rgba(33,29,24,.35)",
+            }}
+          >
+            <header className="flex items-center gap-3 p-5" style={{ background: t.brand }}>
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-sm font-extrabold"
+                style={{ borderRadius: 13, background: "rgba(255,255,255,.18)", color: "#fff" }}
+              >
+                {initialsOf(t.name)}
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-extrabold" style={{ color: "#fff" }}>
+                  {t.name}
+                </h2>
+                <p
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "rgba(255,255,255,.72)" }}
+                >
+                  {t.tag}
+                </p>
+              </div>
+            </header>
+
+            <p className="px-5 pt-4 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              {t.text}
+            </p>
+
+            <div className="grid gap-2 p-5 sm:grid-cols-2">
+              {SURFACES.map((s) => (
+                <Link
+                  key={s.key}
+                  href={s.href(t.slug)}
+                  className="flex items-center gap-3 px-4 py-3 transition hover:-translate-y-0.5"
                   style={{
-                    borderRadius: 999,
                     background: "var(--surface-2)",
                     border: "1px solid var(--border-2)",
-                    color: "var(--text-faint)",
+                    borderRadius: 14,
                   }}
                 >
-                  {s.hint}
-                </span>
-              </div>
-              <h2 className="mt-3 text-lg font-extrabold" style={{ color: "var(--text)" }}>
-                {s.title} →
-              </h2>
-              <p
-                className="mt-1 text-sm leading-relaxed"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {s.text}
-              </p>
-            </Link>
-          ))}
-        </div>
+                  <span className="text-xl" aria-hidden>
+                    {s.icon}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-extrabold" style={{ color: "var(--text)" }}>
+                      {s.title} →
+                    </span>
+                    <span
+                      className="block text-[11.5px] font-semibold"
+                      style={{ color: "var(--text-faint)" }}
+                    >
+                      {s.hint}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+
+        <Link
+          href="/plataforma"
+          className="mt-4 flex items-center gap-4 p-6 transition hover:-translate-y-0.5"
+          style={{
+            background: "#211d18",
+            border: "1px solid #211d18",
+            borderRadius: 22,
+            boxShadow: "0 20px 40px -34px rgba(33,29,24,.35)",
+          }}
+        >
+          <span className="text-3xl" aria-hidden>
+            🏢
+          </span>
+          <span className="min-w-0">
+            <span className="block text-lg font-extrabold" style={{ color: "#f7f3ec" }}>
+              Plataforma (operador) →
+            </span>
+            <span
+              className="mt-1 block text-sm leading-relaxed"
+              style={{ color: "rgba(247,243,236,.66)" }}
+            >
+              Alta de restaurantes, mensualidad y suspensión. Es el panel con el que
+              Vectaryx cobra. Necesita la clave privada.
+            </span>
+          </span>
+        </Link>
 
         <div
           className="mt-10 p-5 text-sm leading-relaxed"
@@ -137,8 +189,7 @@ export default function Home() {
             enciende en caja.
           </p>
           <p className="mt-2">
-            La carta es la de <strong style={{ color: "var(--text)" }}>Punto Azul</strong>{" "}
-            (Lima). Los números de Yape y Plin son{" "}
+            Los números de Yape y Plin son{" "}
             <strong style={{ color: "var(--warning)" }}>ficticios</strong>: es una demo, no
             transfieras dinero. Los pedidos que dejes se borran cuando la demo se reinicia.
           </p>

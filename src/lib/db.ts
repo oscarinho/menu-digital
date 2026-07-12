@@ -243,11 +243,13 @@ export function businessDayRange(
   return { start: toSqlite(startMs), end: toSqlite(startMs + DAY_MS) };
 }
 
+// Solo para estrenar una base vacía. Si ya hay restaurantes cargados no siembra
+// nada: si no, borrar el local de ejemplo lo resucitaba en cada arranque.
 function seed(db: Database.Database) {
-  const existing = db
-    .prepare("SELECT id FROM restaurants WHERE slug = ?")
-    .get("demo");
-  if (existing) return;
+  const { count } = db
+    .prepare("SELECT COUNT(*) AS count FROM restaurants")
+    .get() as { count: number };
+  if (count > 0) return;
 
   const rid = randomUUID();
   db.prepare(
