@@ -61,6 +61,26 @@ aparece limpia. Para una demo eso es una ventaja; para un cliente real no sirve
 
 Cada `git push` a la rama por defecto vuelve a desplegar.
 
+## Antes de repartir el link
+
+Cinco minutos que evitan el ridículo:
+
+- [ ] Abre la URL de Render y espera a que despierte. Comprueba que la **portada**
+      carga y que se ven **los dos restaurantes**.
+- [ ] Entra a `/plataforma` con tu clave. Si te deja entrar con `vectaryx2026`,
+      **no** pusiste `VECTARYX_PLATFORM_KEY`: párate y ponla.
+- [ ] Haz un pedido completo desde el celular de verdad, no desde el simulador del
+      navegador.
+- [ ] Comprueba que la pantalla de pago **avisa de que los números son ficticios**
+      (ese aviso sale sólo si `VECTARYX_DEMO=1`).
+- [ ] Manda [GUIA_PRUEBAS.md](GUIA_PRUEBAS.md) junto con el link: sin el guion, el
+      que prueba abre la carta, no sabe qué mirar y se va.
+- [ ] **No** mandes la clave de `/plataforma` con el link. Ese panel es el tuyo,
+      no el del que prueba.
+
+Y avísale de dos cosas, o creerá que está roto: **el primer acceso tarda ~30 s**
+(el plan free duerme el servicio) y **los pedidos se borran** al reiniciarse.
+
 ## Enseñarla sin internet (misma WiFi)
 
 ```bash

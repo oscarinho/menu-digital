@@ -8,16 +8,17 @@ export const PLATFORM_COOKIE = "vx_platform";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 días
 const PLATFORM_ROLE = "platform";
 
-const DEMO = process.env.VECTARYX_DEMO === "1";
 const PROD = process.env.NODE_ENV === "production";
 
-// Clave del dueño de la plataforma. En producción es obligatoria: sin esto, un
-// despliegue con la variable mal escrita quedaría abierto con la clave pública
-// de la demo. Preferimos que la ruta falle a que quede abierta.
+// Clave del dueño de la plataforma. Obligatoria en producción, y la demo NO es la
+// excepción: es precisamente la que está en internet, y esta clave de conveniencia
+// vive escrita en el repositorio. Si falta la variable, /plataforma no abre.
+// Preferimos que la ruta falle a que quede abierta con una clave que cualquiera
+// puede leer en GitHub.
 export function platformKey(): string {
   const key = process.env.VECTARYX_PLATFORM_KEY;
   if (key) return key;
-  if (PROD && !DEMO) {
+  if (PROD) {
     throw new Error(
       "Falta VECTARYX_PLATFORM_KEY: el panel /plataforma no arranca sin una clave propia."
     );

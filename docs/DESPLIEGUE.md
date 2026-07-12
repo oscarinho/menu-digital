@@ -75,13 +75,18 @@ con 14 días de retención. Ideal además sincronizar esa carpeta fuera del VPS
 
 ### 6. Higiene post-despliegue (¡importante!)
 
-La primera visita crea la base con el restaurante demo. Antes de dar de alta
-locales reales:
+La imagen arranca con `npm start`, que **no siembra nada**: en el servidor de un
+cliente la base nace vacía y la carta de la demo nunca llega ahí (sólo la demo
+usa `npm run demo:start`). Pero si la base está vacía, la app crea un local de
+ejemplo con PIN `1234` en la primera visita. Así que:
 
 1. Entrar a `https://tu-dominio/plataforma` con la clave nueva del `.env`.
-2. **Suspender** "La Cevichería del Puerto" (o cambiarle el PIN `1234` desde
-   su admin) — es un demo público conocido.
-3. Crear los restaurantes reales del piloto con PIN propios.
+2. Dar de alta el restaurante real con **PIN propios y distintos entre sí**: el
+   del personal abre cocina y caja; el del dueño abre además la administración.
+   Mientras coincidan, cualquiera de la cocina puede cambiar el número de Yape al
+   que llega el dinero del local.
+3. **Suspender o borrar** el local de ejemplo que haya quedado: su PIN `1234` es
+   público.
 
 ## Operación diaria
 

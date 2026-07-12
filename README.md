@@ -14,14 +14,18 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:3000. La primera vez se crea `data/menu.db` (SQLite) con
-un restaurante demo: **La Cevichería del Puerto** (slug `demo`, 8 mesas, menú
-peruano de ejemplo).
+Abre http://localhost:3000. La portada es el índice de la demo: lleva a las
+pantallas de los dos restaurantes, **Punto Azul** (cevichería, slug `punto-azul`)
+y **Lanzhou Noodles** (fideos, slug `lanzhou-noodles`). Para partir de una demo
+limpia y con las dos cartas cargadas: `npm run demo:reset`.
 
-**Credenciales demo**: PIN del personal `1234` · PIN del dueño `1234` (en un local
-real deben ser distintos) · clave de plataforma `vectaryx2026`. En producción hay
-que cambiarla con `VECTARYX_PLATFORM_KEY`: sin ella, el panel `/plataforma` no
-arranca (antes caía en la clave pública de la demo).
+**Credenciales de la demo**: PIN del personal `1234` · PIN del dueño `1234` (en un
+local real deben ser distintos) · clave de plataforma: la que pongas en
+`VECTARYX_PLATFORM_KEY`. En producción es obligatoria — sin ella el panel
+`/plataforma` no arranca.
+
+Para que otro la pruebe: [docs/GUIA_PRUEBAS.md](docs/GUIA_PRUEBAS.md) es el guion
+que se le pasa, y [docs/DEMO.md](docs/DEMO.md) explica cómo publicarla gratis.
 
 **Estructura**: `src/` la app · `scripts/` utilidades de línea de comandos ·
 `demo/` el snapshot de la demo pública · `docs/` las guías (despliegue, pruebas,
@@ -30,13 +34,16 @@ demo, revisión técnica) · `ops/` material de trabajo que no es parte del prod
 
 ## Superficies
 
+`{slug}` es el del restaurante: `punto-azul` o `lanzhou-noodles` en la demo.
+
 | Ruta | Quién la usa |
 | --- | --- |
-| `/r/demo/mesa/1` | Cliente: menú con fotos, carrito y envío del pedido (abrir en el celular) |
+| `/` | Portada: índice de la demo, con los dos restaurantes |
+| `/r/{slug}/mesa/1` | Cliente: menú con fotos, carrito y envío del pedido (abrir en el celular) |
 | `/pedido/[id]` | Cliente: tracking en vivo + pago Yape/Plin ("Ya pagué ✓") |
-| `/cocina/demo` | Cocina (KDS): Nuevos → En preparación → Listos, con alerta sonora opcional. Requiere PIN |
-| `/caja/demo` | Caja: cuentas por mesa, confirmación de pagos Yape/Plin informados por el cliente, cobro con tarjeta/efectivo. Requiere PIN |
-| `/admin/demo` | Administración: menú (fotos, precios, disponibilidad), mesas con QR imprimible, datos de cobro (números Yape/Plin, QR de pago, cambio de PIN). Requiere PIN |
+| `/cocina/{slug}` | Cocina (KDS): Nuevos → En preparación → Listos, con alerta sonora opcional. Requiere PIN |
+| `/caja/{slug}` | Caja: cuentas por mesa, confirmación de pagos Yape/Plin informados por el cliente, cobro con tarjeta/efectivo. Requiere PIN |
+| `/admin/{slug}` | Administración: menú (fotos, precios, disponibilidad), mesas con QR imprimible, datos de cobro (números Yape/Plin, QR de pago, cambio de PIN). Requiere PIN del dueño |
 | `/plataforma` | Operador Vectaryx: alta de restaurantes, mensualidad, métricas del día, suspender/reactivar. Requiere clave de plataforma |
 
 ## Autenticación
