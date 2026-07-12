@@ -1,0 +1,6 @@
+# Proxy HTTPS de Vectaryx. Caddy emite y renueva el certificado
+# automáticamente para el dominio definido en .env (APP_DOMAIN).
+{$APP_DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}

@@ -1,0 +1,31 @@
+# Demo pública gratuita de Vectaryx (Render, plan free).
+#
+# El plan free no tiene disco persistente: el contenedor se duerme tras ~15 min
+# sin tráfico y al despertar arranca de cero. Eso aquí juega a favor: demo-boot
+# resiembra data/ desde el snapshot de demo/, así que la demo siempre aparece
+# limpia, con la carta completa y sin los pedidos del visitante anterior.
+#
+# Para un cliente de verdad NO se usa este archivo: ahí hace falta un plan con
+# disco (o el docker-compose.yml + Caddy de DESPLIEGUE.md en un VPS).
+
+services:
+  - type: web
+    name: vectaryx-demo
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    # La imagen arranca con `npm start`, sin sembrar nada. Sólo la demo pide la
+    # siembra desde el snapshot, para que el despliegue de un cliente jamás
+    # reciba la carta de Punto Azul ni el PIN público 1234.
+    dockerCommand: npm run demo:start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      # Avisa en la pantalla de pago que el número de Yape/Plin es ficticio.
+      - key: VECTARYX_DEMO
+        value: "1"
+      # Clave del panel /plataforma. sync:false = la escribes tú en el panel de
+      # Render; no queda en el repositorio.
+      - key: VECTARYX_PLATFORM_KEY
+        sync: false

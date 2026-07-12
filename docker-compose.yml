@@ -1,0 +1,35 @@
+# Vectaryx Pedidos en Mesa — producción en un VPS con un solo comando:
+#   docker compose up -d --build
+# Requiere un archivo .env (copiar .env.example) con APP_DOMAIN y
+# VECTARYX_PLATFORM_KEY. Caddy obtiene y renueva el certificado HTTPS solo.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - VECTARYX_PLATFORM_KEY=${VECTARYX_PLATFORM_KEY:?Define VECTARYX_PLATFORM_KEY en .env}
+    volumes:
+      # Base SQLite + fotos subidas. Respaldar esta carpeta (deploy/backup.sh).
+      - ./data:/app/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN:?Define APP_DOMAIN en .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

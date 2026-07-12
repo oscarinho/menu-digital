@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
+/* ===== Sistema de diseño Vectaryx =====
+   Base cálida y limpia. Cada tenant sólo define --brand; el resto se deriva. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Neutrales cálidos (constantes) */
+  --bg: #efe9de;
+  --surface: #ffffff;
+  --surface-2: #fbf7f0;
+  --text: #211d18;
+  --text-muted: #6b6258;
+  --text-faint: #8a8177;
+  --border: #e9e1d5;
+  --border-2: #ede5d8;
+
+  /* Semánticos (constantes en todo tenant) */
+  --info: #2563eb;        --info-soft: #e8eefb;
+  --warning: #b45309;     --warning-soft: #fbf0dd;
+  --success: #15803d;     --success-soft: #e7f3ec;
+  --danger: #b91c1c;      --danger-soft: #fbe7e4;
+  --neutral: #4b5563;     --neutral-soft: #f0ede7;
+
+  /* Marca por defecto (se sobreescribe por tenant en runtime) */
+  --brand: #0e6e86;
+  --brand-contrast: #ffffff;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Oculta scrollbars en barras horizontales y hojas deslizables */
+.noscroll::-webkit-scrollbar { display: none; }
+.noscroll { scrollbar-width: none; }
+
+@keyframes reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes sheetup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }

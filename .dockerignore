@@ -1,0 +1,12 @@
+node_modules
+.next
+data
+backups
+.git
+.env*
+*.md
+docs
+ops
+Caddyfile
+docker-compose.yml
+deploy

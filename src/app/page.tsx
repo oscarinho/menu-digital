@@ -1,63 +1,147 @@
-import Image from "next/image";
+import Link from "next/link";
+
+// Portada de la demo: cada tarjeta abre una de las pantallas del producto con
+// los datos reales de la carta de Punto Azul.
+const SURFACES = [
+  {
+    href: "/r/punto-azul/mesa/1",
+    icon: "🍽️",
+    title: "Cliente · Mesa 1",
+    text: "Lo que ve quien escanea el QR: la carta con fotos, el detalle de cada plato y el pedido desde el celular.",
+    hint: "Empieza por aquí",
+  },
+  {
+    href: "/cocina/punto-azul",
+    icon: "👨‍🍳",
+    title: "Cocina",
+    text: "El pedido cae al instante. Un toque lo avanza: recibido → en preparación → listo → entregado.",
+    hint: "PIN 1234",
+  },
+  {
+    href: "/caja/punto-azul",
+    icon: "💳",
+    title: "Caja",
+    text: "Cuentas por mesa. Los pagos que el cliente informa por Yape o Plin se resaltan para confirmarlos.",
+    hint: "PIN 1234",
+  },
+  {
+    href: "/admin/punto-azul",
+    icon: "⚙️",
+    title: "Administración",
+    text: "Carta, precios, agotados, mesas con su QR imprimible, logo y color de marca del local.",
+    hint: "PIN 1234",
+  },
+  {
+    href: "/plataforma",
+    icon: "🏢",
+    title: "Plataforma (operador)",
+    text: "Alta de restaurantes, mensualidad y suspensión. Es el panel con el que Vectaryx cobra.",
+    hint: "Clave privada",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex flex-1 flex-col" style={{ background: "var(--bg)" }}>
+      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-10 w-10 items-center justify-center text-xl font-extrabold"
+            style={{
+              borderRadius: 11,
+              background: "#211d18",
+              color: "#f7f3ec",
+              fontFamily: "var(--font-display), system-ui, sans-serif",
+            }}
+          >
+            V
+          </span>
+          <p
+            className="text-[13px] font-extrabold uppercase tracking-[0.14em]"
+            style={{ color: "var(--brand)" }}
+          >
+            Vectaryx · demo
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <h1
+          className="mt-6 text-4xl font-extrabold leading-tight sm:text-5xl"
+          style={{ color: "var(--text)" }}
+        >
+          Tu restaurante toma pedidos solo.
+        </h1>
+        <p
+          className="mt-4 max-w-2xl text-lg leading-relaxed"
+          style={{ color: "var(--text-muted)" }}
+        >
+          El cliente escanea el QR de su mesa y pide desde su celular. El pedido cae
+          directo en la pantalla de cocina y la caja cobra con Yape, Plin, tarjeta o
+          efectivo. Sin apps que instalar y sin comisiones de delivery.
+        </p>
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {SURFACES.map((s) => (
+            <Link
+              key={s.href}
+              href={s.href}
+              className="p-6 transition hover:-translate-y-0.5"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border-2)",
+                borderRadius: 22,
+                boxShadow: "0 20px 40px -34px rgba(33,29,24,.35)",
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-3xl" aria-hidden>
+                  {s.icon}
+                </span>
+                <span
+                  className="ml-auto px-2.5 py-1 text-[11.5px] font-extrabold"
+                  style={{
+                    borderRadius: 999,
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border-2)",
+                    color: "var(--text-faint)",
+                  }}
+                >
+                  {s.hint}
+                </span>
+              </div>
+              <h2 className="mt-3 text-lg font-extrabold" style={{ color: "var(--text)" }}>
+                {s.title} →
+              </h2>
+              <p
+                className="mt-1 text-sm leading-relaxed"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {s.text}
+              </p>
+            </Link>
+          ))}
+        </div>
+
+        <div
+          className="mt-10 p-5 text-sm leading-relaxed"
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--border-2)",
+            borderRadius: 18,
+            color: "var(--text-muted)",
+          }}
+        >
+          <p>
+            <strong style={{ color: "var(--text)" }}>Cómo verlo en vivo:</strong> abre la
+            vista de cliente en tu celular y la de cocina en otra pantalla. Al enviar el
+            pedido aparece en cocina en menos de 3 segundos, y al informar el pago se
+            enciende en caja.
+          </p>
+          <p className="mt-2">
+            La carta es la de <strong style={{ color: "var(--text)" }}>Punto Azul</strong>{" "}
+            (Lima). Los números de Yape y Plin son{" "}
+            <strong style={{ color: "var(--warning)" }}>ficticios</strong>: es una demo, no
+            transfieras dinero. Los pedidos que dejes se borran cuando la demo se reinicia.
+          </p>
         </div>
       </main>
     </div>
