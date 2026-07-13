@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { forgetOrder, isOrderOpen } from "@/lib/active-order";
 import { STATUS_TONE, brandVars, initialsOf } from "@/lib/brand";
 import { formatMoney } from "@/lib/money";
 import { isInAppMethod, paymentLabel } from "@/lib/payments";
@@ -42,7 +43,14 @@ export default function PedidoPage({
         const d = await res.json();
         if (!alive) return;
         if (!res.ok) setError(d.error ?? "Error");
-        else setData(d);
+        else {
+          setData(d);
+          // Cerrado el ciclo (entregado y pagado, o cancelado), la mesa deja de
+          // arrastrarlo: al volver a escanear el QR se empieza de cero.
+          if (!isOrderOpen(d.order)) {
+            forgetOrder(d.restaurantSlug, d.order.table_code);
+          }
+        }
       } catch {
         if (alive) setError("Sin conexión");
       }

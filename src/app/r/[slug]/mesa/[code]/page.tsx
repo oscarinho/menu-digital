@@ -2,16 +2,21 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { forgetOrder, isOrderOpen, recallOrder, rememberOrder } from "@/lib/active-order";
 import { contrastOn, initialsOf } from "@/lib/brand";
 import { formatMoney } from "@/lib/money";
 import { getPaymentMethods, isInAppMethod } from "@/lib/payments";
-import type { Category, MenuItem, PublicRestaurant } from "@/lib/types";
+import { ORDER_STATUS_LABELS } from "@/lib/types";
+import type { Category, MenuItem, Order, PublicRestaurant } from "@/lib/types";
 
 interface MenuData {
   restaurant: PublicRestaurant;
   categories: Category[];
   items: MenuItem[];
 }
+
+// El pedido que esta mesa dejó abierto desde este mismo celular, si lo hay.
+type OpenOrder = Pick<Order, "id" | "daily_number" | "status" | "payment_status">;
 
 // Chips de ingredientes: cada uno viene como "emoji etiqueta", separados por '|'.
 function IngredientChips({ raw }: { raw: string }) {
@@ -97,6 +102,7 @@ export default function MesaPage({
   const [paymentMethod, setPaymentMethod] = useState("yape");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [openOrder, setOpenOrder] = useState<OpenOrder | null>(null);
 
   useEffect(() => {
     fetch(`/api/restaurants/${slug}`)
@@ -110,6 +116,33 @@ export default function MesaPage({
       })
       .catch(() => setError("No se pudo cargar el menú"));
   }, [slug]);
+
+  // ¿Esta mesa dejó un pedido a medias? Lo recordamos en este celular al enviarlo.
+  // Si ya terminó (entregado y pagado, o cancelado), lo olvidamos: la próxima
+  // visita a la mesa empieza limpia.
+  useEffect(() => {
+    const id = recallOrder(slug, code);
+    if (!id) return;
+    let alive = true;
+    fetch(`/api/orders/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive) return;
+        const order: OpenOrder | undefined = d?.order;
+        if (!order || !isOrderOpen(order)) {
+          forgetOrder(slug, code);
+          setOpenOrder(null);
+          return;
+        }
+        setOpenOrder(order);
+      })
+      .catch(() => {
+        // Sin red no sabemos en qué va: mejor callar que mentir sobre su estado.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [slug, code]);
 
   const itemsById = useMemo(() => {
     const map: Record<string, MenuItem> = {};
@@ -152,6 +185,9 @@ export default function MesaPage({
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "No se pudo enviar el pedido");
+      // Antes de irnos: si cierra la pestaña, esto es lo único que le devuelve
+      // a su pedido cuando vuelva a escanear el QR de la mesa.
+      rememberOrder(slug, code, d.id);
       router.push(`/pedido/${d.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al enviar el pedido");
@@ -308,6 +344,40 @@ export default function MesaPage({
           </span>
         </div>
       </div>
+
+      {/* ===== Pedido en curso de esta mesa (si volvió a la carta) ===== */}
+      {openOrder && (
+        <button
+          onClick={() => router.push(`/pedido/${openOrder.id}`)}
+          className="flex w-full items-center gap-3 text-left"
+          style={{
+            background: brand,
+            color: brandContrast,
+            padding: "14px 16px",
+          }}
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center text-[13px] font-extrabold"
+            style={{
+              borderRadius: 11,
+              background: "rgba(255,255,255,.2)",
+            }}
+          >
+            #{openOrder.daily_number}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14.5px] font-extrabold">
+              Tienes un pedido en curso
+            </span>
+            <span className="block text-[12.5px] font-semibold opacity-80">
+              {openOrder.payment_status === "claimed"
+                ? "Esperando que caja confirme tu pago"
+                : ORDER_STATUS_LABELS[openOrder.status]}
+            </span>
+          </span>
+          <span className="shrink-0 text-[13px] font-extrabold">Ver →</span>
+        </button>
+      )}
 
       {/* ===== Barra de categorías (sticky) ===== */}
       <div
