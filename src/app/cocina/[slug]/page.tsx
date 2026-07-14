@@ -41,9 +41,22 @@ const COLUMNS: {
   },
 ];
 
+// Las fechas llegan de SQLite como 'YYYY-MM-DD HH:MM:SS' en UTC.
+function parseTs(ts: string): Date {
+  return new Date(ts.replace(" ", "T") + "Z");
+}
+
+// Cuarta columna: no es un paso más del flujo (no tiene botón "siguiente"), es la
+// memoria del turno. Por eso va fuera de COLUMNS.
+const DONE = { label: "Entregados hoy", color: "#57534e", soft: "#e7e5e4" };
+
 function minutesSince(createdAt: string): number {
-  const d = new Date(createdAt.replace(" ", "T") + "Z");
+  const d = parseTs(createdAt);
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+}
+
+function hourOf(ts: string): string {
+  return parseTs(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 // El tiempo transcurrido entra en alerta a los 6 min y en urgencia a los 10.
@@ -123,10 +136,16 @@ function KitchenBoard({ slug }: { slug: string }) {
   }, [orders]);
 
   async function setStatus(id: string, status: OrderStatus) {
+    // El entregado no se va del tablero: baja a la columna "Entregados" y ahí se
+    // queda hasta el cierre del día. El anulado sí desaparece, no hay nada que ver.
     setOrders((os) =>
-      status === "delivered" || status === "cancelled"
+      status === "cancelled"
         ? os.filter((o) => o.id !== id)
-        : os.map((o) => (o.id === id ? { ...o, status } : o))
+        : os.map((o) =>
+            o.id === id
+              ? { ...o, status, updated_at: new Date().toISOString().slice(0, 19).replace("T", " ") }
+              : o
+          )
     );
     await fetch(`/api/orders/${id}`, {
       method: "PATCH",
@@ -134,6 +153,12 @@ function KitchenBoard({ slug }: { slug: string }) {
       body: JSON.stringify({ status }),
     });
   }
+
+  // El último entregado, arriba: es el que la mesa acaba de recibir y por el que van
+  // a preguntar.
+  const delivered = orders
+    .filter((o) => o.status === "delivered")
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   return (
     <div className="flex flex-1 flex-col" style={{ background: "#211d18" }}>
@@ -175,7 +200,7 @@ function KitchenBoard({ slug }: { slug: string }) {
         </div>
       </header>
 
-      <main className="grid flex-1 gap-4 p-[18px] lg:grid-cols-3">
+      <main className="grid flex-1 gap-4 p-[18px] lg:grid-cols-4">
         {COLUMNS.map((col) => {
           const colOrders = orders.filter((o) => o.status === col.status);
           return (
@@ -314,6 +339,94 @@ function KitchenBoard({ slug }: { slug: string }) {
             </section>
           );
         })}
+
+        {/* Entregados: lo que ya salió hoy, mesa por mesa. Cocina lo necesita para
+            responder "¿esa mesa ya tiene su plato?" sin preguntar a nadie. */}
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center gap-2.5 px-1 pt-0.5">
+            <span
+              className="h-[11px] w-[11px] rounded-full"
+              style={{ background: DONE.color }}
+            />
+            <h2
+              className="text-[15px] font-extrabold uppercase tracking-[0.05em]"
+              style={{ color: "#f7f3ec" }}
+            >
+              {DONE.label}
+            </h2>
+            <span
+              className="ml-auto px-2.5 py-0.5 text-[13px] font-extrabold tabular-nums"
+              style={{ borderRadius: 999, background: DONE.soft, color: DONE.color }}
+            >
+              {delivered.length}
+            </span>
+          </div>
+
+          {delivered.length === 0 && (
+            <p
+              className="p-[26px] text-center text-sm font-bold"
+              style={{ borderRadius: 16, border: "2px dashed #3a332a", color: "#6e655a" }}
+            >
+              Nada entregado todavía
+            </p>
+          )}
+
+          {delivered.map((o) => (
+            <article
+              key={o.id}
+              className="p-3.5"
+              style={{
+                background: "#f7f3ec",
+                borderRadius: 18,
+                borderLeft: `5px solid ${DONE.color}`,
+                animation: "reveal .2s ease both",
+              }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="text-lg font-extrabold leading-none"
+                  style={{
+                    color: "var(--text)",
+                    fontFamily: "var(--font-display), system-ui, sans-serif",
+                  }}
+                >
+                  {o.table_label}
+                </span>
+                <span
+                  className="text-[13px] font-bold"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  #{o.daily_number}
+                </span>
+                <span
+                  className="ml-auto text-[12.5px] font-bold tabular-nums"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  ✓ {hourOf(o.updated_at)}
+                </span>
+              </div>
+
+              <p
+                className="mt-1.5 text-[13.5px] font-semibold leading-snug"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {o.items.map((it) => `${it.quantity}× ${it.name}`).join(" · ")}
+              </p>
+
+              <button
+                onClick={() => setStatus(o.id, "ready")}
+                className="mt-2.5 px-3 py-1.5 text-xs font-bold"
+                style={{
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                ↩ Volver a listo
+              </button>
+            </article>
+          ))}
+        </section>
       </main>
     </div>
   );

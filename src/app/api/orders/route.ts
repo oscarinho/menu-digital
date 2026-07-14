@@ -158,14 +158,27 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  // Cocina y caja no solo trabajan lo que tienen delante: también necesitan ver lo
+  // que ya cerraron hoy ("¿la mesa 4 ya salió?", "¿cuánto llevamos cobrado?"). Cada
+  // vista devuelve lo abierto —sin límite de día: un pedido de anoche sin cobrar
+  // sigue pendiente— más lo cerrado dentro del día del local.
+  //
+  // Lo cerrado se acota por updated_at (cuándo se entregó o se cobró), no por
+  // created_at: en un local que sirve pasada la medianoche, el pedido que se toma a
+  // las 23:55 y se cobra a las 00:05 se le desaparecería a la caja en el momento de
+  // cobrarlo, que es justo lo que no queremos.
+  const day = businessDayRange(restaurant.timezone);
   const args: unknown[] = [restaurant.id];
   let where: string;
   if (view === "kitchen") {
-    where = "o.status IN ('pending','preparing','ready')";
+    where = `(o.status IN ('pending','preparing','ready')
+              OR (o.status = 'delivered' AND o.updated_at >= ? AND o.updated_at < ?))`;
+    args.push(day.start, day.end);
   } else if (view === "caja") {
-    where = "o.payment_status != 'paid' AND o.status != 'cancelled'";
+    where = `((o.payment_status != 'paid' AND o.status != 'cancelled')
+              OR (o.payment_status = 'paid' AND o.updated_at >= ? AND o.updated_at < ?))`;
+    args.push(day.start, day.end);
   } else {
-    const day = businessDayRange(restaurant.timezone);
     where = "o.created_at >= ? AND o.created_at < ?";
     args.push(day.start, day.end);
   }

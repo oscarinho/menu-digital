@@ -9,6 +9,14 @@ import type { OrderWithDetails } from "@/lib/types";
 
 const GRID = "1.1fr 1fr 1.4fr .9fr";
 
+// SQLite devuelve 'YYYY-MM-DD HH:MM:SS' en UTC.
+function hourOf(ts: string): string {
+  return new Date(ts.replace(" ", "T") + "Z").toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function CajaBoard({ slug }: { slug: string }) {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [currency, setCurrency] = useState("PEN");
@@ -42,14 +50,33 @@ function CajaBoard({ slug }: { slug: string }) {
     };
   }, [slug]);
 
-  const claimedCount = orders.filter((o) => o.payment_status === "claimed").length;
-  const pendingTotal = orders.reduce((s, o) => s + o.total_cents, 0);
+  // Cuentas abiertas arriba, cobradas hoy abajo. El cobro no borra el pedido: la
+  // caja necesita poder mirar atrás ("¿la mesa 3 pagó?", "¿cuánto llevamos?").
+  const open = orders.filter((o) => o.payment_status !== "paid");
+  const paid = orders
+    .filter((o) => o.payment_status === "paid")
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
+  const claimedCount = open.filter((o) => o.payment_status === "claimed").length;
+  const pendingTotal = open.reduce((s, o) => s + o.total_cents, 0);
+  const paidTotal = paid.reduce((s, o) => s + o.total_cents, 0);
   // Los métodos salen del país del local, no de un "PE" fijo: el día que haya un
   // cliente fuera de Perú, la caja no debe ofrecerle Yape.
   const methods = getPaymentMethods(country);
 
   async function markPaid(orderId: string, method: string) {
-    setOrders((os) => os.filter((o) => o.id !== orderId));
+    setOrders((os) =>
+      os.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              payment_status: "paid" as const,
+              payment_method: method,
+              updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
+            }
+          : o
+      )
+    );
     setCharging(null);
     await fetch(`/api/orders/${orderId}`, {
       method: "PATCH",
@@ -117,7 +144,7 @@ function CajaBoard({ slug }: { slug: string }) {
             <div className="text-right">Acción</div>
           </div>
 
-          {orders.length === 0 && (
+          {open.length === 0 && (
             <p
               className="py-16 text-center font-semibold"
               style={{ color: "var(--text-faint)" }}
@@ -126,7 +153,7 @@ function CajaBoard({ slug }: { slug: string }) {
             </p>
           )}
 
-          {orders.map((o) => {
+          {open.map((o) => {
             const claimed = o.payment_status === "claimed";
             const open = charging === o.id;
             return (
@@ -255,6 +282,92 @@ function CajaBoard({ slug }: { slug: string }) {
             );
           })}
         </div>
+
+        {/* Cobrados hoy: el pedido no se evapora al confirmarlo. Queda el registro
+            del día y el total, que es lo que la caja cuadra al cerrar. */}
+        {paid.length > 0 && (
+          <div
+            className="mt-5 overflow-hidden"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 24,
+            }}
+          >
+            <header
+              className="flex flex-wrap items-center gap-3 px-6 py-[18px]"
+              style={{ borderBottom: "1px solid var(--border-2)" }}
+            >
+              <h2
+                className="text-[15px] font-extrabold uppercase tracking-[0.05em]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Cobrados hoy
+              </h2>
+              <span
+                className="px-2.5 py-0.5 text-[13px] font-extrabold tabular-nums"
+                style={{
+                  borderRadius: 999,
+                  background: "var(--success-soft)",
+                  color: "var(--success)",
+                }}
+              >
+                {paid.length}
+              </span>
+              <span
+                className="ml-auto text-lg font-extrabold tabular-nums"
+                style={{
+                  color: "var(--text)",
+                  fontFamily: "var(--font-display), system-ui, sans-serif",
+                }}
+              >
+                {formatMoney(paidTotal, currency)}
+              </span>
+            </header>
+
+            {paid.map((o) => (
+              <div
+                key={o.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-6 py-3.5"
+                style={{ borderTop: "1px solid var(--border-2)" }}
+              >
+                <span
+                  className="text-[15px] font-extrabold"
+                  style={{
+                    color: "var(--text)",
+                    fontFamily: "var(--font-display), system-ui, sans-serif",
+                  }}
+                >
+                  {o.table_label}
+                </span>
+                <span
+                  className="text-[12.5px] font-semibold"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  #{o.daily_number} · {hourOf(o.updated_at)}
+                </span>
+                {o.payment_method && (
+                  <span
+                    className="px-3 py-1 text-[12.5px] font-bold"
+                    style={{
+                      borderRadius: 999,
+                      background: "var(--neutral-soft)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {paymentLabel(o.payment_method)}
+                  </span>
+                )}
+                <span
+                  className="ml-auto text-base font-extrabold tabular-nums"
+                  style={{ color: "var(--success)" }}
+                >
+                  {formatMoney(o.total_cents, currency)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
