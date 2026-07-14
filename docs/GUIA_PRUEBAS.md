@@ -35,8 +35,10 @@ pasear por todo).
 
 ### 1 · Eres el cliente (en el celular)
 
-Abre **Cliente · Mesa 1** de Punto Azul. Es lo que ve alguien que acaba de
-escanear el QR de su mesa.
+En la tarjeta de Punto Azul, toca **Mesa 1**. Es lo que ve alguien que acaba de
+escanear el QR pegado en su mesa: en el local de verdad no eliges, te lo da el QR.
+Aquí puedes entrar como cualquiera de las 10 mesas — hazlo desde dos o tres
+distintas, y en el paso 4 verás el salón llenarse.
 
 - Toca un plato para ver la foto grande, los ingredientes y el detalle.
 - Agrega dos o tres platos. Mira cómo crece el carrito abajo.

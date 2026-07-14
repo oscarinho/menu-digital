@@ -20,14 +20,11 @@ const TENANTS = [
   },
 ];
 
+// Las mesas que trae cada local sembrado. Aquí hacen de QR: en el restaurante de
+// verdad, cada una tiene el suyo pegado en la mesa.
+const TABLE_CODES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+
 const SURFACES = [
-  {
-    key: "cliente",
-    icon: "🍽️",
-    title: "Cliente · Mesa 1",
-    hint: "Empieza por aquí",
-    href: (s: string) => `/r/${s}/mesa/1`,
-  },
   { key: "cocina", icon: "👨‍🍳", title: "Cocina", hint: "PIN 1234", href: (s: string) => `/cocina/${s}` },
   { key: "caja", icon: "💳", title: "Caja", hint: "PIN 1234", href: (s: string) => `/caja/${s}` },
   { key: "salon", icon: "🪑", title: "Salón", hint: "PIN 1234", href: (s: string) => `/salon/${s}` },
@@ -114,6 +111,36 @@ export default function Home() {
             <p className="px-5 pt-4 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
               {t.text}
             </p>
+
+            {/* Cada local tiene sus 10 mesas, pero la portada solo enlazaba la 1: se
+                pedía siempre desde la misma y el salón quedaba con nueve mesas
+                muertas. Aquí estos chips hacen de QR — en el local de verdad, cada
+                mesa tiene el suyo pegado en la madera. */}
+            <div className="px-5 pt-4">
+              <p
+                className="text-[11.5px] font-extrabold uppercase tracking-[0.1em]"
+                style={{ color: "var(--text-faint)" }}
+              >
+                🍽️ Pide como comensal · empieza por aquí
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {TABLE_CODES.map((code) => (
+                  <Link
+                    key={code}
+                    href={`/r/${t.slug}/mesa/${code}`}
+                    className="px-3.5 py-2 text-[13px] font-extrabold tabular-nums transition hover:-translate-y-0.5"
+                    style={{
+                      borderRadius: 999,
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border-2)",
+                      color: "var(--text)",
+                    }}
+                  >
+                    Mesa {code}
+                  </Link>
+                ))}
+              </div>
+            </div>
 
             <div className="grid gap-2 p-5 sm:grid-cols-2">
               {SURFACES.map((s) => (
