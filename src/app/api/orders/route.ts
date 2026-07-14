@@ -178,6 +178,12 @@ export async function GET(req: Request) {
     where = `((o.payment_status != 'paid' AND o.status != 'cancelled')
               OR (o.payment_status = 'paid' AND o.updated_at >= ? AND o.updated_at < ?))`;
     args.push(day.start, day.end);
+  } else if (view === "salon") {
+    // El estado de una mesa no se guarda: se deduce de si tiene un pedido vivo. Un
+    // campo "ocupada" habría que liberarlo a mano, y a la primera noche con prisa
+    // nadie se acuerda: el mapa mentiría. Esto no puede desincronizarse.
+    where = `o.status != 'cancelled'
+             AND NOT (o.status = 'delivered' AND o.payment_status = 'paid')`;
   } else {
     where = "o.created_at >= ? AND o.created_at < ?";
     args.push(day.start, day.end);
@@ -203,5 +209,13 @@ export async function GET(req: Request) {
     currency: restaurant.currency,
     // La caja arma con esto sus métodos de cobro; antes asumía "PE".
     country: restaurant.country,
+    // El mapa del salón necesita también las mesas vacías, que por definición no
+    // tienen ningún pedido que las traiga en la consulta de arriba.
+    tables:
+      view === "salon"
+        ? (db
+            .prepare("SELECT * FROM tables WHERE restaurant_id = ?")
+            .all(restaurant.id) as Table[])
+        : undefined,
   });
 }

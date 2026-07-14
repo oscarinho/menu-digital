@@ -23,6 +23,7 @@ Cambia `<slug>` por `punto-azul` o `lanzhou-noodles`.
 | Seguimiento del pedido | `/pedido/<id>` (sale solo al pedir) | libre |
 | Cocina | `/cocina/<slug>` | PIN del personal **1234** |
 | Caja | `/caja/<slug>` | PIN del personal **1234** |
+| Salón (mapa de mesas) | `/salon/<slug>` | PIN del personal **1234** |
 | Administración del local | `/admin/<slug>` | PIN del dueño **1234** |
 | Panel de plataforma (operador) | `/plataforma` | clave privada (`VECTARYX_PLATFORM_KEY`) |
 

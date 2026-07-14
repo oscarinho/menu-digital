@@ -30,6 +30,7 @@ const SURFACES = [
   },
   { key: "cocina", icon: "👨‍🍳", title: "Cocina", hint: "PIN 1234", href: (s: string) => `/cocina/${s}` },
   { key: "caja", icon: "💳", title: "Caja", hint: "PIN 1234", href: (s: string) => `/caja/${s}` },
+  { key: "salon", icon: "🪑", title: "Salón", hint: "PIN 1234", href: (s: string) => `/salon/${s}` },
   { key: "admin", icon: "⚙️", title: "Administración", hint: "PIN 1234", href: (s: string) => `/admin/${s}` },
 ];
 

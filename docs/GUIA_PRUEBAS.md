@@ -55,8 +55,11 @@ o una TV colgada en el pase.
 - Tu pedido ya está ahí, en la columna **Nuevos**. Llegó solo, sin recargar.
 - Fíjate en el cronómetro de cada comanda: cambia de color cuando el plato lleva
   demasiado esperando.
-- Avánzalo: **Empezar** → **Listo**.
+- Avánzalo: **Empezar** → **Listo** → **Entregar**.
 - Mira el celular sin tocarlo: el estado cambió solo.
+- El pedido entregado no desaparece: baja a **Entregados hoy**, con la hora de
+  salida. Así la cocina responde "¿la mesa 4 ya tiene su plato?" sin preguntarle
+  a nadie. Si lo entregaste por error, **↩ Volver a listo**.
 
 ### 3 · Eres la caja
 
@@ -67,8 +70,21 @@ Abre **Caja** de Punto Azul.
 - Toca **Confirmar pago recibido ✓** (aquí es donde el cajero mira su celular y
   ve que el yapeo llegó de verdad).
 - En el celular del cliente el pago queda confirmado.
+- Abajo aparece **Cobrados hoy**, con la hora, el método y el total del día. Lo
+  cobrado no se borra de la pantalla: es lo que la caja necesita para cuadrar.
 
-### 4 · Eres el dueño del restaurante
+### 4 · Eres el mozo (el salón)
+
+Abre **Salón** de Punto Azul. Son las 10 mesas del local de un vistazo.
+
+- Las mesas donde nadie pidió están en gris (**Libre**). Las demás llevan el color
+  de lo que les pasa: pedido nuevo, en cocina, listo para servir, por cobrar.
+- Arriba, cuánto hay sin cobrar en el salón ahora mismo.
+- **Ninguna mesa se marca a mano.** El estado sale del propio pedido: en cuanto la
+  caja confirma el cobro, la mesa se pone Libre sola. Pruébalo — cobra desde Caja
+  y vuelve aquí.
+
+### 5 · Eres el dueño del restaurante
 
 Abre **Administración** de Punto Azul (PIN `1234`).
 
@@ -78,7 +94,7 @@ Abre **Administración** de Punto Azul (PIN `1234`).
 - **Mesas y QR**: aquí están los QR que se imprimen y se pegan en cada mesa.
 - **Cobros y seguridad**: los números de Yape/Plin del local y los dos PIN.
 
-### 5 · Ahora el otro restaurante
+### 6 · Ahora el otro restaurante
 
 Abre **Cliente · Mesa 1** de **Lanzhou Noodles**. Misma app, y sin embargo: otra
 carta, otro color, los platos en chino con la traducción debajo, otros precios.
