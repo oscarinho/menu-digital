@@ -1,10 +1,12 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import LangSwitch from "@/app/components/LangSwitch";
 import StaffGate from "@/app/components/StaffGate";
+import { fmt, payLabel, useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import { formatMoney } from "@/lib/money";
-import { getPaymentMethods, paymentLabel } from "@/lib/payments";
+import { getPaymentMethods } from "@/lib/payments";
 import type { OrderWithDetails } from "@/lib/types";
 
 const GRID = "1.1fr 1fr 1.4fr .9fr";
@@ -18,6 +20,7 @@ function hourOf(ts: string): string {
 }
 
 function CajaBoard({ slug }: { slug: string }) {
+  const [t, lang, setLang] = useT("caja");
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [currency, setCurrency] = useState("PEN");
   const [country, setCountry] = useState("PE");
@@ -110,23 +113,28 @@ function CajaBoard({ slug }: { slug: string }) {
               💳
             </span>
             <h1 className="text-[19px] font-extrabold" style={{ color: "var(--text)" }}>
-              Caja · {slug}
+              {t.nav.caja} · {slug}
             </h1>
             <span className="text-sm font-semibold" style={{ color: "var(--text-faint)" }}>
-              {formatMoney(pendingTotal, currency)} por cobrar
+              {fmt(t.caja.toCharge, { amount: formatMoney(pendingTotal, currency) })}
             </span>
-            {claimedCount > 0 && (
-              <span
-                className="ml-auto inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-extrabold"
-                style={{
-                  borderRadius: 999,
-                  background: "var(--warning-soft)",
-                  color: "var(--warning)",
-                }}
-              >
-                🔔 {claimedCount} pago{claimedCount !== 1 && "s"} por confirmar
-              </span>
-            )}
+            <div className="ml-auto flex items-center gap-3">
+              {claimedCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-extrabold"
+                  style={{
+                    borderRadius: 999,
+                    background: "var(--warning-soft)",
+                    color: "var(--warning)",
+                  }}
+                >
+                  {fmt(claimedCount === 1 ? t.caja.claimed1 : t.caja.claimedN, {
+                    n: claimedCount,
+                  })}
+                </span>
+              )}
+              <LangSwitch lang={lang} onChange={setLang} />
+            </div>
           </header>
 
           {/* Encabezado de columnas */}
@@ -138,10 +146,10 @@ function CajaBoard({ slug }: { slug: string }) {
               color: "var(--text-faint)",
             }}
           >
-            <div>Mesa / pedido</div>
-            <div>Total</div>
-            <div>Estado de cobro</div>
-            <div className="text-right">Acción</div>
+            <div>{t.caja.colTable}</div>
+            <div>{t.caja.colTotal}</div>
+            <div>{t.caja.colState}</div>
+            <div className="text-right">{t.caja.colAction}</div>
           </div>
 
           {open.length === 0 && (
@@ -149,7 +157,7 @@ function CajaBoard({ slug }: { slug: string }) {
               className="py-16 text-center font-semibold"
               style={{ color: "var(--text-faint)" }}
             >
-              No hay cuentas abiertas 🎉
+              {t.caja.noOpen}
             </p>
           )}
 
@@ -188,7 +196,10 @@ function CajaBoard({ slug }: { slug: string }) {
                       className="text-[12.5px] font-semibold"
                       style={{ color: "var(--text-faint)" }}
                     >
-                      #{o.daily_number} · {o.items.reduce((s, it) => s + it.quantity, 0)} ítems
+                      #{o.daily_number} ·{" "}
+                      {fmt(t.caja.items, {
+                        n: o.items.reduce((s, it) => s + it.quantity, 0),
+                      })}
                     </p>
                   </div>
                 </div>
@@ -215,7 +226,7 @@ function CajaBoard({ slug }: { slug: string }) {
                         color: "var(--text-muted)",
                       }}
                     >
-                      {paymentLabel(o.payment_method)}
+                      {payLabel(t, o.payment_method)}
                     </span>
                   )}
                   <span
@@ -226,7 +237,7 @@ function CajaBoard({ slug }: { slug: string }) {
                       color: claimed ? "var(--info)" : "var(--neutral)",
                     }}
                   >
-                    {claimed ? "Pago informado" : "Por cobrar"}
+                    {claimed ? t.caja.claimedChip : t.caja.toChargeChip}
                   </span>
                 </div>
 
@@ -238,7 +249,7 @@ function CajaBoard({ slug }: { slug: string }) {
                       className="px-4 py-3 text-sm font-extrabold text-white transition active:scale-[0.96]"
                       style={{ borderRadius: 12, background: "var(--success)" }}
                     >
-                      Confirmar pago ✓
+                      {t.caja.confirm}
                     </button>
                   ) : (
                     <button
@@ -250,7 +261,7 @@ function CajaBoard({ slug }: { slug: string }) {
                         color: open ? "var(--text)" : "var(--brand-contrast)",
                       }}
                     >
-                      {open ? "Cancelar" : "Cobrar"}
+                      {open ? t.caja.cancel : t.caja.charge}
                     </button>
                   )}
                 </div>
@@ -273,7 +284,7 @@ function CajaBoard({ slug }: { slug: string }) {
                           color: "var(--text)",
                         }}
                       >
-                        {m.icon} {m.label}
+                        {m.icon} {payLabel(t, m.id)}
                       </button>
                     ))}
                   </div>
@@ -302,7 +313,7 @@ function CajaBoard({ slug }: { slug: string }) {
                 className="text-[15px] font-extrabold uppercase tracking-[0.05em]"
                 style={{ color: "var(--text-muted)" }}
               >
-                Cobrados hoy
+                {t.caja.paidToday}
               </h2>
               <span
                 className="px-2.5 py-0.5 text-[13px] font-extrabold tabular-nums"
@@ -355,7 +366,7 @@ function CajaBoard({ slug }: { slug: string }) {
                       color: "var(--text-muted)",
                     }}
                   >
-                    {paymentLabel(o.payment_method)}
+                    {payLabel(t, o.payment_method)}
                   </span>
                 )}
                 <span
@@ -380,7 +391,7 @@ export default function CajaPage({
 }) {
   const { slug } = use(params);
   return (
-    <StaffGate slug={slug} title="Caja">
+    <StaffGate slug={slug} surface="caja">
       <CajaBoard slug={slug} />
     </StaffGate>
   );

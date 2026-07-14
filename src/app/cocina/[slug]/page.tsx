@@ -1,44 +1,21 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import LangSwitch from "@/app/components/LangSwitch";
 import StaffGate from "@/app/components/StaffGate";
+import { useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import type { OrderStatus, OrderWithDetails } from "@/lib/types";
 
-// Columnas del tablero. El color es semántico (no de marca): significa lo mismo
-// en cualquier restaurante.
-const COLUMNS: {
-  status: OrderStatus;
-  label: string;
-  color: string;
-  soft: string;
-  next: OrderStatus;
-  nextLabel: string;
-}[] = [
-  {
-    status: "pending",
-    label: "Recibido",
-    color: "#2563eb",
-    soft: "#e8eefb",
-    next: "preparing",
-    nextLabel: "Empezar a preparar",
-  },
-  {
-    status: "preparing",
-    label: "En preparación",
-    color: "#b45309",
-    soft: "#fbf0dd",
-    next: "ready",
-    nextLabel: "Marcar listo",
-  },
-  {
-    status: "ready",
-    label: "Listo",
-    color: "#15803d",
-    soft: "#e7f3ec",
-    next: "delivered",
-    nextLabel: "Entregar",
-  },
+// Columnas del tablero. El color es semántico (no de marca): significa lo mismo en
+// cualquier restaurante. Los nombres, en cambio, salen del diccionario: la tablet del
+// pase la mira un cocinero que puede no leer español —de ahí salió este cambio.
+type Step = "pending" | "preparing" | "ready";
+
+const COLUMNS: { status: Step; color: string; soft: string; next: OrderStatus }[] = [
+  { status: "pending", color: "#2563eb", soft: "#e8eefb", next: "preparing" },
+  { status: "preparing", color: "#b45309", soft: "#fbf0dd", next: "ready" },
+  { status: "ready", color: "#15803d", soft: "#e7f3ec", next: "delivered" },
 ];
 
 // Las fechas llegan de SQLite como 'YYYY-MM-DD HH:MM:SS' en UTC.
@@ -48,7 +25,7 @@ function parseTs(ts: string): Date {
 
 // Cuarta columna: no es un paso más del flujo (no tiene botón "siguiente"), es la
 // memoria del turno. Por eso va fuera de COLUMNS.
-const DONE = { label: "Entregados hoy", color: "#57534e", soft: "#e7e5e4" };
+const DONE = { color: "#57534e", soft: "#e7e5e4" };
 
 function minutesSince(createdAt: string): number {
   const d = parseTs(createdAt);
@@ -67,6 +44,7 @@ function elapsedTone(mins: number): { color: string; bg: string } {
 }
 
 function KitchenBoard({ slug }: { slug: string }) {
+  const [t, lang, setLang] = useT("cocina");
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [connected, setConnected] = useState(true);
   const [soundOn, setSoundOn] = useState(false);
@@ -173,8 +151,11 @@ function KitchenBoard({ slug }: { slug: string }) {
         >
           🍳
         </span>
-        <h1 className="text-[19px] font-extrabold">Cocina · {slug}</h1>
+        <h1 className="text-[19px] font-extrabold">
+          {t.nav.cocina} · {slug}
+        </h1>
         <div className="ml-auto flex items-center gap-2">
+          <LangSwitch lang={lang} onChange={setLang} tone="dark" />
           <button
             onClick={toggleSound}
             className="px-3 py-1.5 text-xs font-extrabold"
@@ -185,7 +166,7 @@ function KitchenBoard({ slug }: { slug: string }) {
               color: soundOn ? "#f7f3ec" : "#b7ae9f",
             }}
           >
-            {soundOn ? "🔔 Sonido activo" : "🔕 Activar sonido"}
+            {soundOn ? t.kitchen.soundOn : t.kitchen.soundOff}
           </button>
           <span
             className="px-3 py-1.5 text-xs font-extrabold"
@@ -195,7 +176,7 @@ function KitchenBoard({ slug }: { slug: string }) {
               color: connected ? "#6ee7a5" : "#fca5a5",
             }}
           >
-            {connected ? "● En vivo" : "○ Sin conexión"}
+            {connected ? t.kitchen.live : `○ ${t.common.offline}`}
           </span>
         </div>
       </header>
@@ -214,7 +195,7 @@ function KitchenBoard({ slug }: { slug: string }) {
                   className="text-[15px] font-extrabold uppercase tracking-[0.05em]"
                   style={{ color: "#f7f3ec" }}
                 >
-                  {col.label}
+                  {t.kitchen.cols[col.status]}
                 </h2>
                 <span
                   className="ml-auto px-2.5 py-0.5 text-[13px] font-extrabold tabular-nums"
@@ -233,7 +214,7 @@ function KitchenBoard({ slug }: { slug: string }) {
                     color: "#6e655a",
                   }}
                 >
-                  Sin comandas
+                  {t.kitchen.empty}
                 </p>
               )}
 
@@ -272,7 +253,7 @@ function KitchenBoard({ slug }: { slug: string }) {
                         className="ml-auto px-2.5 py-1 text-[13px] font-extrabold tabular-nums"
                         style={{ borderRadius: 999, color: tone.color, background: tone.bg }}
                       >
-                        ⏱ {mins} min
+                        ⏱ {mins} {t.common.min}
                       </span>
                     </div>
 
@@ -317,7 +298,7 @@ function KitchenBoard({ slug }: { slug: string }) {
                         className="flex-1 py-3.5 text-[15px] font-extrabold text-white transition active:scale-[0.97]"
                         style={{ borderRadius: 13, background: col.color }}
                       >
-                        {col.nextLabel} ▸
+                        {t.kitchen.next[col.status]} ▸
                       </button>
                       {o.status === "pending" && (
                         <button
@@ -329,7 +310,7 @@ function KitchenBoard({ slug }: { slug: string }) {
                             color: "var(--text-muted)",
                           }}
                         >
-                          Anular
+                          {t.kitchen.cancel}
                         </button>
                       )}
                     </div>
@@ -352,7 +333,7 @@ function KitchenBoard({ slug }: { slug: string }) {
               className="text-[15px] font-extrabold uppercase tracking-[0.05em]"
               style={{ color: "#f7f3ec" }}
             >
-              {DONE.label}
+              {t.kitchen.done}
             </h2>
             <span
               className="ml-auto px-2.5 py-0.5 text-[13px] font-extrabold tabular-nums"
@@ -367,7 +348,7 @@ function KitchenBoard({ slug }: { slug: string }) {
               className="p-[26px] text-center text-sm font-bold"
               style={{ borderRadius: 16, border: "2px dashed #3a332a", color: "#6e655a" }}
             >
-              Nada entregado todavía
+              {t.kitchen.noneDone}
             </p>
           )}
 
@@ -422,7 +403,7 @@ function KitchenBoard({ slug }: { slug: string }) {
                   color: "var(--text-muted)",
                 }}
               >
-                ↩ Volver a listo
+                {t.kitchen.backToReady}
               </button>
             </article>
           ))}
@@ -439,7 +420,7 @@ export default function CocinaPage({
 }) {
   const { slug } = use(params);
   return (
-    <StaffGate slug={slug} title="Cocina">
+    <StaffGate slug={slug} surface="cocina">
       <KitchenBoard slug={slug} />
     </StaffGate>
   );

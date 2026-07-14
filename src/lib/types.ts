@@ -8,14 +8,8 @@ export type OrderStatus =
 // unpaid → (cliente informa pago Yape/Plin) claimed → (caja confirma) paid
 export type PaymentStatus = "unpaid" | "claimed" | "paid";
 
-export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "Recibido",
-  preparing: "En preparación",
-  ready: "Listo para servir",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
-
+// El nombre de cada estado ("Recibido" / "Received" / "已接单") vive en lib/i18n:
+// depende de quién mire la pantalla, no del dominio. Aquí solo queda el orden.
 export const ORDER_FLOW: OrderStatus[] = [
   "pending",
   "preparing",

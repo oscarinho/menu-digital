@@ -1,8 +1,10 @@
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
+import LangSwitch from "@/app/components/LangSwitch";
 import StaffGate from "@/app/components/StaffGate";
 import { DEFAULT_BRAND, brandVars, initialsOf } from "@/lib/brand";
+import { fmt, useT, type Dict } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import type { Category, MenuItem, PublicRestaurant, Table } from "@/lib/types";
 
@@ -15,11 +17,12 @@ interface AdminData {
 
 type Tab = "menu" | "mesas" | "marca" | "cobros";
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "menu", label: "Carta", icon: "🍽️" },
-  { key: "mesas", label: "Mesas & QR", icon: "🪑" },
-  { key: "cobros", label: "Cobros y seguridad", icon: "💰" },
-  { key: "marca", label: "Marca & local", icon: "🎨" },
+// El icono no se traduce; el nombre sí, y sale de t.admin.tabs.
+const TABS: { key: Tab; icon: string }[] = [
+  { key: "menu", icon: "🍽️" },
+  { key: "mesas", icon: "🪑" },
+  { key: "cobros", icon: "💰" },
+  { key: "marca", icon: "🎨" },
 ];
 
 const CARD: React.CSSProperties = {
@@ -35,20 +38,22 @@ const INPUT: React.CSSProperties = {
   color: "var(--text)",
 };
 
-async function uploadImage(file: File): Promise<string> {
+async function uploadImage(file: File, failText: string): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch("/api/upload", { method: "POST", body: form });
   const d = await res.json();
-  if (!res.ok) throw new Error(d.error ?? "No se pudo subir la imagen");
+  if (!res.ok) throw new Error(failText);
   return d.url as string;
 }
 
 // Botón que abre el selector de archivo y sube la imagen elegida.
 function PhotoButton({
+  t,
   label,
   onUploaded,
 }: {
+  t: Dict;
   label: string;
   onUploaded: (url: string) => void;
 }) {
@@ -67,9 +72,9 @@ function PhotoButton({
           if (!file) return;
           setBusy(true);
           try {
-            onUploaded(await uploadImage(file));
+            onUploaded(await uploadImage(file, t.admin.uploadFail));
           } catch (err) {
-            alert(err instanceof Error ? err.message : "Error al subir");
+            alert(err instanceof Error ? err.message : t.admin.uploadFail);
           } finally {
             setBusy(false);
           }
@@ -86,20 +91,28 @@ function PhotoButton({
           color: "var(--text-muted)",
         }}
       >
-        {busy ? "Subiendo…" : label}
+        {busy ? t.admin.uploading : label}
       </button>
     </>
   );
 }
 
 // Interruptor de disponibilidad del plato.
-function AvailToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+function AvailToggle({
+  t,
+  on,
+  onToggle,
+}: {
+  t: Dict;
+  on: boolean;
+  onToggle: () => void;
+}) {
   return (
     <button
       onClick={onToggle}
       className="flex items-center gap-2"
       aria-pressed={on}
-      title={on ? "Disponible" : "Agotado"}
+      title={on ? t.admin.available : t.admin.soldout}
     >
       <span
         className="relative block h-[27px] w-[46px] transition-colors"
@@ -119,13 +132,14 @@ function AvailToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
         className="min-w-[64px] text-left text-[12.5px] font-extrabold"
         style={{ color: on ? "var(--success)" : "var(--danger)" }}
       >
-        {on ? "Disponible" : "Agotado"}
+        {on ? t.admin.available : t.admin.soldout}
       </span>
     </button>
   );
 }
 
 function AdminPanel({ slug }: { slug: string }) {
+  const [t, lang, setLang] = useT("admin");
   const [data, setData] = useState<AdminData | null>(null);
   const [tab, setTab] = useState<Tab>("menu");
   const [qrs, setQrs] = useState<Record<string, string>>({});
@@ -168,9 +182,9 @@ function AdminPanel({ slug }: { slug: string }) {
     let alive = true;
     import("qrcode").then(async (QRCode) => {
       const entries: Record<string, string> = {};
-      for (const t of data.tables) {
-        entries[t.id] = await QRCode.toDataURL(
-          `${window.location.origin}/r/${slug}/mesa/${t.code}`,
+      for (const table of data.tables) {
+        entries[table.id] = await QRCode.toDataURL(
+          `${window.location.origin}/r/${slug}/mesa/${table.code}`,
           { width: 240, margin: 1 }
         );
       }
@@ -187,7 +201,7 @@ function AdminPanel({ slug }: { slug: string }) {
         className="flex flex-1 items-center justify-center"
         style={{ background: "var(--bg)", color: "var(--text-faint)" }}
       >
-        Cargando…
+        {t.common.loading}
       </div>
     );
   }
@@ -205,17 +219,17 @@ function AdminPanel({ slug }: { slug: string }) {
 
   async function editPrice(item: MenuItem) {
     const input = window.prompt(
-      `Nuevo precio de "${item.name}" en soles (ej. 35.50):`,
+      fmt(t.admin.pricePrompt, { name: item.name }),
       (item.price_cents / 100).toFixed(2)
     );
     if (input === null) return;
-    const soles = Number(input.replace(",", "."));
-    if (!Number.isFinite(soles) || soles < 0) return;
-    patchItem(item.id, { priceCents: Math.round(soles * 100) });
+    const amount = Number(input.replace(",", "."));
+    if (!Number.isFinite(amount) || amount < 0) return;
+    patchItem(item.id, { priceCents: Math.round(amount * 100) });
   }
 
   async function deleteItem(item: MenuItem) {
-    if (!window.confirm(`¿Eliminar "${item.name}" del menú?`)) return;
+    if (!window.confirm(fmt(t.admin.deleteConfirm, { name: item.name }))) return;
     await fetch(`/api/menu-items/${item.id}`, { method: "DELETE" });
     load();
   }
@@ -277,8 +291,7 @@ function AdminPanel({ slug }: { slug: string }) {
       setPayForm((f) => ({ ...f, pin: "", adminPin: "" }));
       load();
     } else {
-      const d = await res.json();
-      alert(d.error ?? "No se pudo guardar");
+      alert(t.admin.saveFail);
     }
   }
 
@@ -360,18 +373,22 @@ function AdminPanel({ slug }: { slug: string }) {
                 className="mt-1 text-[11.5px] font-semibold"
                 style={{ color: "var(--text-faint)" }}
               >
-                Admin
+                {t.admin.role}
               </p>
             </div>
           </div>
 
+          <div className="pb-4">
+            <LangSwitch lang={lang} onChange={setLang} />
+          </div>
+
           <nav className="flex gap-1 overflow-x-auto md:flex-col">
-            {TABS.map((t) => {
-              const active = tab === t.key;
+            {TABS.map((item) => {
+              const active = tab === item.key;
               return (
                 <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
+                  key={item.key}
+                  onClick={() => setTab(item.key)}
                   className="flex shrink-0 items-center gap-2.5 px-3 py-2.5 text-sm font-bold"
                   style={{
                     borderRadius: 11,
@@ -379,8 +396,8 @@ function AdminPanel({ slug }: { slug: string }) {
                     color: active ? "var(--brand-contrast)" : "var(--text-muted)",
                   }}
                 >
-                  <span aria-hidden>{t.icon}</span>
-                  {t.label}
+                  <span aria-hidden>{item.icon}</span>
+                  {t.admin.tabs[item.key]}
                 </button>
               );
             })}
@@ -393,18 +410,20 @@ function AdminPanel({ slug }: { slug: string }) {
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-[22px] font-extrabold" style={{ color: "var(--text)" }}>
-                  Carta
+                  {t.admin.tabs.menu}
                 </h2>
                 <span
                   className="text-[13.5px] font-semibold"
                   style={{ color: "var(--text-faint)" }}
                 >
-                  {data.items.length} platos · {data.categories.length} categorías
+                  {fmt(t.admin.counts, {
+                    items: data.items.length,
+                    cats: data.categories.length,
+                  })}
                 </span>
               </div>
               <p className="mb-4 mt-1 text-[13.5px]" style={{ color: "var(--text-faint)" }}>
-                Toca el interruptor para marcar un plato como agotado. Se refleja al
-                instante en el menú del cliente.
+                {t.admin.menuHint}
               </p>
 
               <div className="space-y-5">
@@ -456,7 +475,8 @@ function AdminPanel({ slug }: { slug: string }) {
                               {item.name}
                             </span>
                             <PhotoButton
-                              label={item.image ? "📷 Cambiar" : "📷 Foto"}
+                              t={t}
+                              label={item.image ? t.admin.changePhoto : t.admin.photo}
                               onUploaded={(url) => patchItem(item.id, { image: url })}
                             />
                             <button
@@ -466,11 +486,12 @@ function AdminPanel({ slug }: { slug: string }) {
                                 color: "var(--text)",
                                 fontFamily: "var(--font-display), system-ui, sans-serif",
                               }}
-                              title="Editar precio"
+                              title={t.admin.editPrice}
                             >
                               {formatMoney(item.price_cents, currency)} ✎
                             </button>
                             <AvailToggle
+                              t={t}
                               on={!!item.available}
                               onToggle={() =>
                                 patchItem(item.id, { available: !item.available })
@@ -480,7 +501,7 @@ function AdminPanel({ slug }: { slug: string }) {
                               onClick={() => deleteItem(item)}
                               className="px-2 py-1 text-sm"
                               style={{ color: "var(--text-faint)" }}
-                              title="Eliminar"
+                              title={t.admin.delete}
                             >
                               🗑
                             </button>
@@ -499,7 +520,7 @@ function AdminPanel({ slug }: { slug: string }) {
                   }}
                 >
                   <h3 className="text-base font-extrabold" style={{ color: "var(--text)" }}>
-                    Agregar producto
+                    {t.admin.addItem}
                   </h3>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <select
@@ -510,7 +531,7 @@ function AdminPanel({ slug }: { slug: string }) {
                       className="px-3 py-2 text-sm font-semibold"
                       style={INPUT}
                     >
-                      <option value="">Categoría…</option>
+                      <option value="">{t.admin.category}</option>
                       {data.categories.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
@@ -520,14 +541,14 @@ function AdminPanel({ slug }: { slug: string }) {
                     <input
                       value={newItem.name}
                       onChange={(e) => setNewItem((s) => ({ ...s, name: e.target.value }))}
-                      placeholder="Nombre del plato"
+                      placeholder={t.admin.itemName}
                       className="min-w-40 flex-1 px-3 py-2 text-sm"
                       style={INPUT}
                     />
                     <input
                       value={newItem.price}
                       onChange={(e) => setNewItem((s) => ({ ...s, price: e.target.value }))}
-                      placeholder="Precio (S/)"
+                      placeholder={t.admin.price}
                       inputMode="decimal"
                       className="w-28 px-3 py-2 text-sm"
                       style={INPUT}
@@ -541,7 +562,7 @@ function AdminPanel({ slug }: { slug: string }) {
                         color: "var(--brand-contrast)",
                       }}
                     >
-                      + Nuevo plato
+                      {t.admin.newItem}
                     </button>
                   </div>
                   <div
@@ -551,7 +572,7 @@ function AdminPanel({ slug }: { slug: string }) {
                     <input
                       value={newCategory}
                       onChange={(e) => setNewCategory(e.target.value)}
-                      placeholder="Nueva categoría (ej. Menú del día)"
+                      placeholder={t.admin.newCategoryPh}
                       className="min-w-40 flex-1 px-3 py-2 text-sm"
                       style={INPUT}
                     />
@@ -560,7 +581,7 @@ function AdminPanel({ slug }: { slug: string }) {
                       className="px-4 py-2 text-sm font-extrabold"
                       style={{ borderRadius: 11, background: "#211d18", color: "#f7f3ec" }}
                     >
-                      Crear categoría
+                      {t.admin.createCategory}
                     </button>
                   </div>
                 </section>
@@ -572,13 +593,13 @@ function AdminPanel({ slug }: { slug: string }) {
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-[22px] font-extrabold" style={{ color: "var(--text)" }}>
-                  Mesas & QR
+                  {t.admin.tabs.mesas}
                 </h2>
                 <div className="ml-auto flex gap-2">
                   <input
                     value={newTable}
                     onChange={(e) => setNewTable(e.target.value)}
-                    placeholder="N° de mesa"
+                    placeholder={t.admin.tableNo}
                     className="w-28 px-3 py-2 text-sm"
                     style={INPUT}
                   />
@@ -591,42 +612,45 @@ function AdminPanel({ slug }: { slug: string }) {
                       color: "var(--brand-contrast)",
                     }}
                   >
-                    Crear mesa
+                    {t.admin.createTable}
                   </button>
                 </div>
               </div>
               <p className="mb-4 mt-1 text-[13.5px]" style={{ color: "var(--text-faint)" }}>
-                Imprime cada QR y pégalo en su mesa. Al escanearlo, el cliente entra
-                directo al menú de esa mesa.
+                {t.admin.tablesHint}
               </p>
 
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                {data.tables.map((t) => (
-                  <figure key={t.id} className="p-3 text-center" style={CARD}>
-                    {qrs[t.id] ? (
+                {data.tables.map((table) => (
+                  <figure key={table.id} className="p-3 text-center" style={CARD}>
+                    {qrs[table.id] ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={qrs[t.id]} alt={`QR ${t.label}`} className="mx-auto" />
+                      <img
+                        src={qrs[table.id]}
+                        alt={`QR ${table.label}`}
+                        className="mx-auto"
+                      />
                     ) : (
                       <div
                         className="mx-auto flex h-32 items-center justify-center text-xs"
                         style={{ color: "var(--text-faint)" }}
                       >
-                        Generando QR…
+                        {t.admin.generatingQr}
                       </div>
                     )}
                     <figcaption
                       className="mt-2 text-sm font-extrabold"
                       style={{ color: "var(--text)" }}
                     >
-                      {t.label}
+                      {table.label}
                     </figcaption>
                     <a
-                      href={qrs[t.id]}
-                      download={`qr-mesa-${t.code}.png`}
+                      href={qrs[table.id]}
+                      download={`qr-mesa-${table.code}.png`}
                       className="text-xs font-bold"
                       style={{ color: "var(--brand)" }}
                     >
-                      Descargar PNG
+                      {t.admin.downloadPng}
                     </a>
                   </figure>
                 ))}
@@ -637,17 +661,16 @@ function AdminPanel({ slug }: { slug: string }) {
           {tab === "marca" && (
             <>
               <h2 className="text-[22px] font-extrabold" style={{ color: "var(--text)" }}>
-                Marca & local
+                {t.admin.tabs.marca}
               </h2>
               <p className="mb-4 mt-1 text-[13.5px]" style={{ color: "var(--text-faint)" }}>
-                Esto es lo que ve tu cliente al escanear el QR: tu logo, tu portada y tu
-                color. Un solo token re-tematiza todo el producto.
+                {t.admin.brandHint}
               </p>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <section className="p-[18px]" style={CARD}>
                   <h3 className="text-base font-extrabold" style={{ color: "var(--text)" }}>
-                    Logo y portada
+                    {t.admin.logoCover}
                   </h3>
                   <div className="mt-3.5 flex items-center gap-4">
                     {data.restaurant.logo ? (
@@ -667,11 +690,14 @@ function AdminPanel({ slug }: { slug: string }) {
                           color: "var(--text-faint)",
                         }}
                       >
-                        Sin logo
+                        {t.admin.noLogo}
                       </div>
                     )}
                     <PhotoButton
-                      label={data.restaurant.logo ? "📷 Cambiar logo" : "📷 Subir logo"}
+                      t={t}
+                      label={
+                        data.restaurant.logo ? t.admin.changeLogo : t.admin.uploadLogo
+                      }
                       onUploaded={(url) => saveBranding({ logo: url })}
                     />
                   </div>
@@ -694,15 +720,16 @@ function AdminPanel({ slug }: { slug: string }) {
                           color: "var(--text-faint)",
                         }}
                       >
-                        Sin foto de portada
+                        {t.admin.noCover}
                       </div>
                     )}
                     <div className="mt-3">
                       <PhotoButton
+                        t={t}
                         label={
                           data.restaurant.cover_image
-                            ? "📷 Cambiar portada"
-                            : "📷 Subir portada"
+                            ? t.admin.changeCover
+                            : t.admin.uploadCover
                         }
                         onUploaded={(url) => saveBranding({ coverImage: url })}
                       />
@@ -712,14 +739,13 @@ function AdminPanel({ slug }: { slug: string }) {
 
                 <section className="p-[18px]" style={CARD}>
                   <h3 className="text-base font-extrabold" style={{ color: "var(--text)" }}>
-                    Color de marca
+                    {t.admin.brandColor}
                   </h3>
                   <p
                     className="mb-3.5 mt-1 text-[12.5px]"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    Un token re-tematiza todo el producto. El contraste del texto se
-                    calcula solo.
+                    {t.admin.colorHint}
                   </p>
                   <div className="flex flex-wrap gap-2.5">
                     {[
@@ -751,7 +777,7 @@ function AdminPanel({ slug }: { slug: string }) {
                       className="flex items-center gap-2 text-sm font-semibold"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      Otro:
+                      {t.admin.other}
                       <input
                         type="color"
                         value={brandColor}
@@ -763,7 +789,7 @@ function AdminPanel({ slug }: { slug: string }) {
                   </div>
 
                   <p className="mt-3.5 text-[13px]" style={{ color: "var(--text-muted)" }}>
-                    Actual:{" "}
+                    {t.admin.current}{" "}
                     <code
                       className="px-2 py-0.5 font-bold"
                       style={{
@@ -785,7 +811,7 @@ function AdminPanel({ slug }: { slug: string }) {
                       color: "var(--brand-contrast)",
                     }}
                   >
-                    {brandSaved ? "Guardado ✓" : "Guardar color"}
+                    {brandSaved ? t.admin.saved : t.admin.saveColor}
                   </button>
                 </section>
               </div>
@@ -795,11 +821,10 @@ function AdminPanel({ slug }: { slug: string }) {
           {tab === "cobros" && (
             <>
               <h2 className="text-[22px] font-extrabold" style={{ color: "var(--text)" }}>
-                Cobros digitales
+                {t.admin.payTitle}
               </h2>
               <p className="mb-4 mt-1 text-[13.5px]" style={{ color: "var(--text-faint)" }}>
-                Con esto tus clientes pagan desde su celular apenas piden: ven tu QR,
-                yapean y avisan; la caja solo confirma.
+                {t.admin.payHint}
               </p>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -810,7 +835,7 @@ function AdminPanel({ slug }: { slug: string }) {
                         className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.06em]"
                         style={{ color: "var(--text-faint)" }}
                       >
-                        Número Yape
+                        {t.admin.yapeNumber}
                       </span>
                       <input
                         value={payForm.yape}
@@ -825,7 +850,7 @@ function AdminPanel({ slug }: { slug: string }) {
                         className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.06em]"
                         style={{ color: "var(--text-faint)" }}
                       >
-                        Número Plin
+                        {t.admin.plinNumber}
                       </span>
                       <input
                         value={payForm.plin}
@@ -840,7 +865,7 @@ function AdminPanel({ slug }: { slug: string }) {
                         className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.06em]"
                         style={{ color: "var(--text-faint)" }}
                       >
-                        PIN del personal · cocina y caja (4–6 dígitos)
+                        {t.admin.staffPin}
                       </span>
                       <input
                         value={payForm.pin}
@@ -850,7 +875,7 @@ function AdminPanel({ slug }: { slug: string }) {
                             pin: e.target.value.replace(/\D/g, "").slice(0, 6),
                           }))
                         }
-                        placeholder="Dejar vacío para no cambiar"
+                        placeholder={t.admin.keepPin}
                         inputMode="numeric"
                         className="w-full px-3 py-2.5 text-sm font-bold"
                         style={INPUT}
@@ -861,7 +886,7 @@ function AdminPanel({ slug }: { slug: string }) {
                         className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.06em]"
                         style={{ color: "var(--text-faint)" }}
                       >
-                        PIN del dueño · esta pantalla (4–6 dígitos)
+                        {t.admin.adminPin}
                       </span>
                       <input
                         value={payForm.adminPin}
@@ -871,7 +896,7 @@ function AdminPanel({ slug }: { slug: string }) {
                             adminPin: e.target.value.replace(/\D/g, "").slice(0, 6),
                           }))
                         }
-                        placeholder="Dejar vacío para no cambiar"
+                        placeholder={t.admin.keepPin}
                         inputMode="numeric"
                         className="w-full px-3 py-2.5 text-sm font-bold"
                         style={INPUT}
@@ -880,8 +905,7 @@ function AdminPanel({ slug }: { slug: string }) {
                         className="mt-1.5 block text-[12px]"
                         style={{ color: "var(--warning)" }}
                       >
-                        Ponle uno distinto al del personal: con este PIN se cambian los
-                        precios y el número de Yape al que llega tu dinero.
+                        {t.admin.pinWarn}
                       </span>
                     </label>
                   </div>
@@ -894,20 +918,19 @@ function AdminPanel({ slug }: { slug: string }) {
                       color: "var(--brand-contrast)",
                     }}
                   >
-                    {paySaved ? "Guardado ✓" : "Guardar cambios"}
+                    {paySaved ? t.admin.saved : t.admin.saveChanges}
                   </button>
                 </section>
 
                 <section className="p-[18px]" style={CARD}>
                   <h3 className="text-base font-extrabold" style={{ color: "var(--text)" }}>
-                    QR de cobro
+                    {t.admin.payQr}
                   </h3>
                   <p
                     className="mb-3.5 mt-1 text-[12.5px]"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    Sube la imagen del QR que te da tu app de Yape o Plin. Es lo que verá
-                    el cliente al pagar.
+                    {t.admin.payQrHint}
                   </p>
                   <div className="flex items-center gap-4">
                     {data.restaurant.payment_qr ? (
@@ -927,12 +950,13 @@ function AdminPanel({ slug }: { slug: string }) {
                           color: "var(--text-faint)",
                         }}
                       >
-                        Sin QR de cobro
+                        {t.admin.noPayQr}
                       </div>
                     )}
                     <PhotoButton
+                      t={t}
                       label={
-                        data.restaurant.payment_qr ? "📷 Cambiar QR" : "📷 Subir QR de cobro"
+                        data.restaurant.payment_qr ? t.admin.changeQr : t.admin.uploadQr
                       }
                       onUploaded={setPaymentQr}
                     />
@@ -954,7 +978,7 @@ export default function AdminPage({
 }) {
   const { slug } = use(params);
   return (
-    <StaffGate slug={slug} title="Administración" role="admin">
+    <StaffGate slug={slug} surface="admin" role="admin">
       <AdminPanel slug={slug} />
     </StaffGate>
   );

@@ -31,6 +31,26 @@ pasear por todo).
 
 ---
 
+## El idioma, pantalla por pantalla
+
+Arriba de cada pantalla hay un **ES · EN · 中文**. No es un ajuste del restaurante:
+es de la pantalla, y cada una recuerda el suyo.
+
+Eso es a propósito. En un local chino de Lima, la tablet del pase la mira un cocinero
+que quizá no lee español, y la caja la lleva personal peruano: son dos aparatos
+distintos a diez metros uno de otro, y cada uno necesita su idioma **a la vez**.
+Pruébalo — pon la **cocina en 中文** y abre después la **caja**: sigue en español. El
+dueño, que puede ser chino, peruano o americano, tiene el suyo en Administración.
+
+También está en la pantalla del PIN, no solo detrás: quien no lee español tiene que
+poder cambiarlo **antes** de entrar.
+
+Lo que no se traduce son los **nombres de los platos**: esos son la carta del
+restaurante, no la aplicación. Por eso Lanzhou sigue enseñando 牛肉拉面 con su
+traducción debajo, la pongas en el idioma que la pongas.
+
+---
+
 ## El recorrido
 
 ### 1 · Eres el cliente (en el celular)
@@ -120,6 +140,8 @@ Esto es lo que de verdad nos interesa que nos digas:
 - **¿La cocina se entiende de un vistazo?** Imagina el local lleno, con ruido, y
   un cocinero que mira la pantalla dos segundos.
 - **¿Confiarías en pagar por aquí?** Qué te faltó ver para fiarte.
+- **¿Está bien traducido?** Sobre todo el chino de cocina y caja: son las dos
+  pantallas que alguien mira con prisa y sin tiempo de descifrar nada.
 - **¿Qué hiciste que no funcionó como esperabas?**
 
 ## Lo que todavía no está
@@ -130,6 +152,9 @@ Para que no lo busques:
   confirma a mano. La pasarela de verdad (Culqi, Izipay, Mercado Pago) viene
   después.
 - **No hay boleta ni factura** (SUNAT) todavía.
+- **La carta no se traduce sola.** La interfaz está en tres idiomas, pero los nombres
+  y descripciones de los platos son los que escribió el restaurante. Que el dueño
+  pueda escribir su carta en dos idiomas a la vez es lo siguiente.
 - **No se puede llamar al mozo** desde la app.
 - Los pedidos que dejes **se borran** cada vez que la demo se reinicia.
 - Si la demo llevaba rato sin visitas, el primer acceso tarda ~30 segundos en

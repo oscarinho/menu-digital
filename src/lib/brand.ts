@@ -7,36 +7,17 @@ export const DEFAULT_BRAND = "#0e6e86";
  * Tono semántico de cada estado del pedido. Es constante en todos los tenants:
  * el color de marca nunca se usa para comunicar estado, para que "listo" o
  * "cancelado" signifiquen lo mismo en cualquier restaurante.
+ *
+ * El color no se traduce; la frase que lo acompaña, sí, y por eso vive en lib/i18n
+ * (`hint`): el verde significa lo mismo para el cocinero chino y para el cajero
+ * peruano, pero "¡Buen provecho!" no.
  */
-export const STATUS_TONE: Record<
-  OrderStatus,
-  { color: string; soft: string; hint: string }
-> = {
-  pending: {
-    color: "var(--warning)",
-    soft: "var(--warning-soft)",
-    hint: "La cocina ya vio tu pedido.",
-  },
-  preparing: {
-    color: "var(--info)",
-    soft: "var(--info-soft)",
-    hint: "Están cocinando lo tuyo.",
-  },
-  ready: {
-    color: "var(--success)",
-    soft: "var(--success-soft)",
-    hint: "Sale de cocina hacia tu mesa.",
-  },
-  delivered: {
-    color: "var(--success)",
-    soft: "var(--success-soft)",
-    hint: "¡Buen provecho!",
-  },
-  cancelled: {
-    color: "var(--danger)",
-    soft: "var(--danger-soft)",
-    hint: "Consulta con el personal del local.",
-  },
+export const STATUS_TONE: Record<OrderStatus, { color: string; soft: string }> = {
+  pending: { color: "var(--warning)", soft: "var(--warning-soft)" },
+  preparing: { color: "var(--info)", soft: "var(--info-soft)" },
+  ready: { color: "var(--success)", soft: "var(--success-soft)" },
+  delivered: { color: "var(--success)", soft: "var(--success-soft)" },
+  cancelled: { color: "var(--danger)", soft: "var(--danger-soft)" },
 };
 
 /**

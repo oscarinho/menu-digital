@@ -1,7 +1,9 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import LangSwitch from "@/app/components/LangSwitch";
 import StaffGate from "@/app/components/StaffGate";
+import { fmt, useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import { formatMoney } from "@/lib/money";
 import type { OrderWithDetails, Table } from "@/lib/types";
@@ -11,30 +13,38 @@ import type { OrderWithDetails, Table } from "@/lib/types";
 // Pagar no vacía la mesa —siguen ahí, con el café—, y un pedido nuevo tampoco lo
 // prueba: pueden ser los mismos pidiendo postre. Así que la cuenta pagada deja la
 // mesa en "Cuenta cerrada" hasta que quien la recoge toca "Liberar".
-interface TableState {
-  label: string;
-  color: string;
-  soft: string;
-}
+// El color de cada estado es el mismo en los tres idiomas —el rojo de "por cobrar" no
+// se traduce—; el nombre sale del diccionario, porque el mozo que mira esta pantalla
+// puede no leer español.
+type StateKey =
+  | "free"
+  | "closed"
+  | "pending"
+  | "preparing"
+  | "ready"
+  | "claimed"
+  | "tocharge";
 
-const FREE: TableState = { label: "Libre", color: "#6e655a", soft: "#f0ede7" };
-const CLOSED: TableState = { label: "Cuenta cerrada", color: "#57534e", soft: "#e7e5e4" };
-
-const BUSY: Record<string, TableState> = {
-  pending: { label: "Pedido nuevo", color: "#2563eb", soft: "#e8eefb" },
-  preparing: { label: "En cocina", color: "#b45309", soft: "#fbf0dd" },
-  ready: { label: "Listo para servir", color: "#15803d", soft: "#e7f3ec" },
-  claimed: { label: "Pago informado", color: "#0369a1", soft: "#e0f2fe" },
-  tocharge: { label: "Por cobrar", color: "#b91c1c", soft: "#fbe7e4" },
+const TONE: Record<StateKey, { color: string; soft: string }> = {
+  free: { color: "#6e655a", soft: "#f0ede7" },
+  closed: { color: "#57534e", soft: "#e7e5e4" },
+  pending: { color: "#2563eb", soft: "#e8eefb" },
+  preparing: { color: "#b45309", soft: "#fbf0dd" },
+  ready: { color: "#15803d", soft: "#e7f3ec" },
+  claimed: { color: "#0369a1", soft: "#e0f2fe" },
+  tocharge: { color: "#b91c1c", soft: "#fbe7e4" },
 };
 
-function stateOf(order: OrderWithDetails | undefined): TableState {
-  if (!order) return FREE;
+function stateOf(order: OrderWithDetails | undefined): StateKey {
+  if (!order) return "free";
   // Ya comió: lo único que le queda a la mesa es pagar.
   if (order.status === "delivered") {
-    return order.payment_status === "claimed" ? BUSY.claimed : BUSY.tocharge;
+    return order.payment_status === "claimed" ? "claimed" : "tocharge";
   }
-  return BUSY[order.status] ?? FREE;
+  if (order.status === "pending" || order.status === "preparing" || order.status === "ready") {
+    return order.status;
+  }
+  return "free";
 }
 
 function minutesSince(ts: string): number {
@@ -58,6 +68,7 @@ function byCode(a: Table, b: Table): number {
 }
 
 function SalonBoard({ slug }: { slug: string }) {
+  const [t, lang, setLang] = useT("salon");
   const [tables, setTables] = useState<Table[]>([]);
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [currency, setCurrency] = useState("PEN");
@@ -104,8 +115,8 @@ function SalonBoard({ slug }: { slug: string }) {
     setFreeing(null);
   }
 
-  const rows = [...tables].sort(byCode).map((t) => {
-    const own = orders.filter((o) => o.table_id === t.id);
+  const rows = [...tables].sort(byCode).map((table) => {
+    const own = orders.filter((o) => o.table_id === table.id);
 
     // Vivos: la ocupan y hay algo que hacer con ellos. Una mesa puede tener más de
     // uno (pidió, y a media comida volvió a pedir): manda el último para el estado,
@@ -122,15 +133,19 @@ function SalonBoard({ slug }: { slug: string }) {
       .map((o) => o.updated_at)
       .sort()
       .pop();
-    const pending = closedAt && closedAt > t.freed_at ? closedAt : undefined;
+    const pending = closedAt && closedAt > table.freed_at ? closedAt : undefined;
 
     return {
-      table: t,
+      table,
       order: live[0] as OrderWithDetails | undefined,
       extra: live.length - 1,
       total: live.reduce((s, o) => s + o.total_cents, 0),
       closedAt: live.length === 0 ? pending : undefined,
-      state: live.length > 0 ? stateOf(live[0]) : pending ? CLOSED : FREE,
+      state: (live.length > 0
+        ? stateOf(live[0])
+        : pending
+          ? "closed"
+          : "free") as StateKey,
     };
   });
 
@@ -151,24 +166,29 @@ function SalonBoard({ slug }: { slug: string }) {
             🍽️
           </span>
           <h1 className="text-[19px] font-extrabold" style={{ color: "var(--text)" }}>
-            Salón · {slug}
+            {t.nav.salon} · {slug}
           </h1>
           <span className="text-sm font-semibold" style={{ color: "var(--text-faint)" }}>
-            {busy} ocupada{busy !== 1 && "s"} · {rows.length - busy} libre
-            {rows.length - busy !== 1 && "s"}
+            {fmt(busy === 1 ? t.salon.occupied1 : t.salon.occupiedN, { n: busy })} ·{" "}
+            {fmt(rows.length - busy === 1 ? t.salon.free1 : t.salon.freeN, {
+              n: rows.length - busy,
+            })}
           </span>
-          {unpaid > 0 && (
-            <span
-              className="ml-auto px-3.5 py-1.5 text-[13px] font-extrabold"
-              style={{
-                borderRadius: 999,
-                background: "var(--warning-soft)",
-                color: "var(--warning)",
-              }}
-            >
-              {formatMoney(unpaid, currency)} sin cobrar
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {unpaid > 0 && (
+              <span
+                className="px-3.5 py-1.5 text-[13px] font-extrabold"
+                style={{
+                  borderRadius: 999,
+                  background: "var(--warning-soft)",
+                  color: "var(--warning)",
+                }}
+              >
+                {fmt(t.salon.unpaid, { amount: formatMoney(unpaid, currency) })}
+              </span>
+            )}
+            <LangSwitch lang={lang} onChange={setLang} />
+          </div>
         </header>
 
         {rows.length === 0 && (
@@ -176,7 +196,7 @@ function SalonBoard({ slug }: { slug: string }) {
             className="mt-8 py-16 text-center font-semibold"
             style={{ color: "var(--text-faint)" }}
           >
-            Este local todavía no tiene mesas. Se crean en Admin → Mesas & QR.
+            {t.salon.noTables}
           </p>
         )}
 
@@ -191,7 +211,7 @@ function SalonBoard({ slug }: { slug: string }) {
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
-                borderTop: `5px solid ${state.color}`,
+                borderTop: `5px solid ${TONE[state].color}`,
                 borderRadius: 18,
                 boxShadow:
                   order || closedAt ? "0 18px 40px -30px rgba(33,29,24,.55)" : "none",
@@ -210,9 +230,13 @@ function SalonBoard({ slug }: { slug: string }) {
 
               <span
                 className="self-start px-2.5 py-1 text-[12.5px] font-extrabold"
-                style={{ borderRadius: 999, background: state.soft, color: state.color }}
+                style={{
+                  borderRadius: 999,
+                  background: TONE[state].soft,
+                  color: TONE[state].color,
+                }}
               >
-                {state.label}
+                {t.salon[state]}
               </span>
 
               {order && (
@@ -221,8 +245,12 @@ function SalonBoard({ slug }: { slug: string }) {
                     className="text-[12.5px] font-semibold tabular-nums"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    #{order.daily_number} · {minutesSince(order.created_at)} min
-                    {extra > 0 && ` · +${extra} pedido${extra !== 1 ? "s" : ""}`}
+                    #{order.daily_number} · {minutesSince(order.created_at)}{" "}
+                    {t.common.min}
+                    {extra > 0 &&
+                      ` · ${fmt(extra === 1 ? t.salon.extra1 : t.salon.extraN, {
+                        n: extra,
+                      })}`}
                   </p>
                   <p
                     className="text-lg font-extrabold tabular-nums"
@@ -242,7 +270,7 @@ function SalonBoard({ slug }: { slug: string }) {
                     className="text-[12.5px] font-semibold"
                     style={{ color: "var(--text-faint)" }}
                   >
-                    Pagó a las {hourOf(closedAt)}
+                    {fmt(t.salon.paidAt, { h: hourOf(closedAt) })}
                   </p>
                   <button
                     onClick={() => freeTable(table.id)}
@@ -254,7 +282,7 @@ function SalonBoard({ slug }: { slug: string }) {
                       color: "var(--brand-contrast)",
                     }}
                   >
-                    {freeing === table.id ? "Liberando…" : "Liberar mesa"}
+                    {freeing === table.id ? t.salon.freeing : t.salon.freeTable}
                   </button>
                 </>
               )}
@@ -273,7 +301,7 @@ export default function SalonPage({
 }) {
   const { slug } = use(params);
   return (
-    <StaffGate slug={slug} title="Salón">
+    <StaffGate slug={slug} surface="salon">
       <SalonBoard slug={slug} />
     </StaffGate>
   );

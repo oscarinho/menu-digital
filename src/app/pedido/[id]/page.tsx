@@ -2,11 +2,13 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import LangSwitch from "@/app/components/LangSwitch";
 import { forgetOrder, isOrderOpen } from "@/lib/active-order";
 import { STATUS_TONE, brandVars, initialsOf } from "@/lib/brand";
+import { fmt, payLabel, useT } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
-import { isInAppMethod, paymentLabel } from "@/lib/payments";
-import { ORDER_FLOW, ORDER_STATUS_LABELS, type OrderWithDetails } from "@/lib/types";
+import { isInAppMethod } from "@/lib/payments";
+import { ORDER_FLOW, type OrderWithDetails } from "@/lib/types";
 
 interface TrackingData {
   order: OrderWithDetails;
@@ -31,6 +33,7 @@ export default function PedidoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const [t, lang, setLang] = useT("track");
   const [data, setData] = useState<TrackingData | null>(null);
   const [error, setError] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -42,7 +45,7 @@ export default function PedidoPage({
         const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
         const d = await res.json();
         if (!alive) return;
-        if (!res.ok) setError(d.error ?? "Error");
+        if (!res.ok) setError(t.menu.loadError);
         else {
           setData(d);
           // Cerrado el ciclo (entregado y pagado, o cancelado), la mesa deja de
@@ -52,15 +55,18 @@ export default function PedidoPage({
           }
         }
       } catch {
-        if (alive) setError("Sin conexión");
+        if (alive) setError(t.common.offline);
       }
     }
     load();
-    const t = setInterval(load, 4000);
+    const timer = setInterval(load, 4000);
     return () => {
       alive = false;
-      clearInterval(t);
+      clearInterval(timer);
     };
+    // El diccionario solo alimenta los mensajes de error: no hay que reiniciar el
+    // sondeo cada vez que alguien cambia de idioma.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function claimPayment() {
@@ -97,7 +103,7 @@ export default function PedidoPage({
         className="flex flex-1 items-center justify-center"
         style={{ background: "var(--bg)", color: "var(--text-faint)" }}
       >
-        Cargando pedido…
+        {t.track.loading}
       </div>
     );
   }
@@ -155,8 +161,11 @@ export default function PedidoPage({
               className="text-[13px] font-semibold"
               style={{ color: "var(--text-faint)" }}
             >
-              Pedido #{order.daily_number} · {order.table_label}
+              {fmt(t.track.orderNo, { n: order.daily_number })} · {order.table_label}
             </p>
+          </div>
+          <div className="ml-auto">
+            <LangSwitch lang={lang} onChange={setLang} />
           </div>
         </header>
 
@@ -166,7 +175,7 @@ export default function PedidoPage({
             className="text-[13px] font-extrabold uppercase tracking-[0.1em]"
             style={{ color: "var(--text-faint)" }}
           >
-            Estado actual
+            {t.track.currentStatus}
           </p>
           <div className="mt-2 flex items-center gap-3">
             <span
@@ -174,11 +183,11 @@ export default function PedidoPage({
               style={{ background: tone.color, boxShadow: `0 0 0 5px ${tone.soft}` }}
             />
             <h2 className="text-[26px] font-extrabold leading-none" style={{ color: "var(--text)" }}>
-              {ORDER_STATUS_LABELS[order.status]}
+              {t.status[order.status]}
             </h2>
           </div>
           <p className="mt-1.5 text-sm" style={{ color: "var(--text-muted)" }}>
-            {tone.hint}
+            {t.hint[order.status]}
           </p>
 
           {!cancelled && (
@@ -220,11 +229,11 @@ export default function PedidoPage({
                         className="text-[15px] font-extrabold"
                         style={{ color: done ? "var(--text)" : "var(--text-faint)" }}
                       >
-                        {ORDER_STATUS_LABELS[status]}
+                        {t.status[status]}
                       </p>
                       {active && !last && (
                         <p className="text-[12.5px]" style={{ color: "var(--text-faint)" }}>
-                          En curso…
+                          {t.track.inProgress}
                         </p>
                       )}
                     </div>
@@ -247,25 +256,25 @@ export default function PedidoPage({
                   color: "var(--warning)",
                 }}
               >
-                ⚠️ Demo — el número de abajo es ficticio. No transfieras dinero.
+                {t.track.demoWarn}
               </p>
             )}
             <h3 className="text-[19px] font-extrabold" style={{ color: "var(--text)" }}>
-              Paga con {paymentLabel(method)}
+              {fmt(t.track.payWith, { m: payLabel(t, method) })}
             </h3>
             <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              {payment.qr ? "Escanea el QR o usa el número, transfiere " : "Transfiere "}
+              {payment.qr ? t.track.payScanPre : t.track.payPre}
               <strong style={{ color: "var(--text)" }}>
                 {formatMoney(order.total_cents, currency)}
-              </strong>{" "}
-              y confirma.
+              </strong>
+              {t.track.payPost}
             </p>
             {payment.qr && (
               <div className="my-4 flex justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={payment.qr}
-                  alt={`QR de pago ${paymentLabel(method)}`}
+                  alt={fmt(t.track.qrAlt, { m: payLabel(t, method) })}
                   className="h-[170px] w-[170px] object-contain p-3"
                   style={{
                     borderRadius: 18,
@@ -280,7 +289,7 @@ export default function PedidoPage({
                 className="text-center text-[13px]"
                 style={{ color: "var(--text-faint)", marginTop: payment.qr ? 0 : 16 }}
               >
-                Titular{" "}
+                {t.track.holder}{" "}
                 <strong style={{ color: "var(--text)" }}>{data.restaurantName}</strong> ·{" "}
                 <strong className="tabular-nums" style={{ color: "var(--text)" }}>
                   {payNumber}
@@ -297,7 +306,7 @@ export default function PedidoPage({
                 color: "var(--brand-contrast)",
               }}
             >
-              {claiming ? "Avisando…" : "Ya pagué"}
+              {claiming ? t.track.claiming : t.track.iPaid}
             </button>
           </section>
         )}
@@ -317,14 +326,15 @@ export default function PedidoPage({
               ✓
             </span>
             <h3 className="text-xl font-extrabold" style={{ color: "var(--text)" }}>
-              Pago informado
+              {t.track.claimedTitle}
             </h3>
             <p
               className="mx-auto mt-1.5 max-w-[30ch] text-sm"
               style={{ color: "var(--text-muted)" }}
             >
-              Avisamos a caja. En cuanto confirmen la transferencia lo verás como{" "}
-              <strong style={{ color: "var(--success)" }}>Pagado</strong>.
+              {t.track.claimedPre}
+              <strong style={{ color: "var(--success)" }}>{t.track.paidWord}</strong>
+              {t.track.claimedPost}
             </p>
             <span
               className="mt-3.5 inline-flex items-center gap-2 px-4 py-2 text-[13px] font-extrabold"
@@ -334,7 +344,7 @@ export default function PedidoPage({
                 color: "var(--warning)",
               }}
             >
-              Esperando confirmación de caja
+              {t.track.waitingCaja}
             </span>
           </section>
         )}
@@ -349,7 +359,7 @@ export default function PedidoPage({
               color: "var(--success)",
             }}
           >
-            Pago confirmado con {paymentLabel(order.payment_method)} ✓ ¡Gracias!
+            {fmt(t.track.paidWith, { m: payLabel(t, order.payment_method) })}
           </p>
         )}
 
@@ -361,10 +371,14 @@ export default function PedidoPage({
             </span>
             <div>
               <p className="text-[15px] font-extrabold" style={{ color: "var(--text)" }}>
-                Pago {method ? `con ${paymentLabel(method)}` : "en el local"}
+                {method
+                  ? fmt(t.track.payAtVenueWith, { m: payLabel(t, method) })
+                  : t.track.payAtVenue}
               </p>
               <p className="text-[13px]" style={{ color: "var(--text-muted)" }}>
-                Se cobra en la mesa · total {formatMoney(order.total_cents, currency)}
+                {fmt(t.track.chargedAtTable, {
+                  amount: formatMoney(order.total_cents, currency),
+                })}
               </p>
             </div>
           </div>
@@ -376,7 +390,7 @@ export default function PedidoPage({
             className="text-[13px] font-extrabold uppercase tracking-[0.1em]"
             style={{ color: "var(--text-faint)" }}
           >
-            Tu pedido
+            {t.menu.yourOrder}
           </h3>
           <ul className="mt-3 space-y-2 text-sm" style={{ color: "var(--text-muted)" }}>
             {order.items.map((it) => (
@@ -413,7 +427,7 @@ export default function PedidoPage({
               fontFamily: "var(--font-display), system-ui, sans-serif",
             }}
           >
-            <span>Total</span>
+            <span>{t.track.total}</span>
             <span style={{ color: "var(--brand)" }}>
               {formatMoney(order.total_cents, currency)}
             </span>
@@ -430,11 +444,11 @@ export default function PedidoPage({
             color: "var(--text)",
           }}
         >
-          Pedir algo más
+          {t.track.orderMore}
         </Link>
 
         <p className="mt-4 text-center text-xs" style={{ color: "var(--text-faint)" }}>
-          Esta página se actualiza sola cada pocos segundos.
+          {t.track.autoRefresh}
         </p>
       </div>
     </div>

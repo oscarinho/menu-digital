@@ -2,11 +2,12 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import LangSwitch from "@/app/components/LangSwitch";
 import { forgetOrder, isOrderOpen, recallOrder, rememberOrder } from "@/lib/active-order";
 import { contrastOn, initialsOf } from "@/lib/brand";
+import { fmt, useT } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { getPaymentMethods, isInAppMethod } from "@/lib/payments";
-import { ORDER_STATUS_LABELS } from "@/lib/types";
 import type { Category, MenuItem, Order, PublicRestaurant } from "@/lib/types";
 
 interface MenuData {
@@ -50,7 +51,7 @@ function IngredientChips({ raw }: { raw: string }) {
   );
 }
 
-function ItemImage({ item }: { item: MenuItem }) {
+function ItemImage({ item, soldoutLabel }: { item: MenuItem; soldoutLabel: string }) {
   const soldout = !item.available;
   return (
     <div
@@ -77,7 +78,7 @@ function ItemImage({ item }: { item: MenuItem }) {
           style={{ borderRadius: 16, background: "rgba(33,29,24,.5)" }}
         >
           <span className="text-[11px] font-extrabold tracking-wide text-white">
-            AGOTADO
+            {soldoutLabel}
           </span>
         </div>
       )}
@@ -93,6 +94,7 @@ export default function MesaPage({
   const { slug, code } = use(params);
   const router = useRouter();
 
+  const [t, lang, setLang] = useT("menu");
   const [data, setData] = useState<MenuData | null>(null);
   const [error, setError] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -114,7 +116,10 @@ export default function MesaPage({
           setActiveCategory(d.categories[0]?.id ?? null);
         }
       })
-      .catch(() => setError("No se pudo cargar el menú"));
+      .catch(() => setError(t.menu.loadError));
+    // El diccionario no debe re-disparar la carga del menú: solo se usa para el
+    // mensaje de error, y volver a pedir la carta al cambiar de idioma sería absurdo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   // ¿Esta mesa dejó un pedido a medias? Lo recordamos en este celular al enviarlo.
@@ -184,13 +189,16 @@ export default function MesaPage({
         }),
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? "No se pudo enviar el pedido");
+      // El servidor responde en español (es su idioma, no el del comensal), así que
+      // aquí mostramos el nuestro: un chino que ve fallar el envío no necesita el
+      // detalle, necesita saber que no salió y volver a intentarlo.
+      if (!res.ok) throw new Error(t.menu.sendError);
       // Antes de irnos: si cierra la pestaña, esto es lo único que le devuelve
       // a su pedido cuando vuelva a escanear el QR de la mesa.
       rememberOrder(slug, code, d.id);
       router.push(`/pedido/${d.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al enviar el pedido");
+      setError(e instanceof Error ? e.message : t.menu.sendError);
       setSubmitting(false);
     }
   }
@@ -211,7 +219,7 @@ export default function MesaPage({
         className="flex flex-1 items-center justify-center"
         style={{ background: "var(--bg)", color: "var(--text-faint)" }}
       >
-        Cargando menú…
+        {t.menu.loading}
       </div>
     );
   }
@@ -240,8 +248,7 @@ export default function MesaPage({
           {r.name}
         </h1>
         <p className="mt-2 max-w-sm" style={{ color: "var(--text-muted)" }}>
-          Por ahora no estamos recibiendo pedidos digitales. Pide tu carta al
-          personal del local.
+          {t.menu.closed}
         </p>
       </div>
     );
@@ -270,6 +277,12 @@ export default function MesaPage({
           backgroundPosition: "center",
         }}
       >
+        {/* Lo primero que se ve al escanear el QR, y lo primero que necesita un
+            turista que no lee español. */}
+        <div className="absolute right-5 top-4">
+          <LangSwitch lang={lang} onChange={setLang} />
+        </div>
+
         <div className="absolute inset-x-5 bottom-4 mx-auto flex max-w-xl items-end gap-3.5">
           {r.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -340,7 +353,7 @@ export default function MesaPage({
               boxShadow: "0 6px 16px -6px rgba(0,0,0,.5)",
             }}
           >
-            Mesa {code}
+            {fmt(t.common.table, { n: code })}
           </span>
         </div>
       </div>
@@ -366,16 +379,14 @@ export default function MesaPage({
             #{openOrder.daily_number}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[14.5px] font-extrabold">
-              Tienes un pedido en curso
-            </span>
+            <span className="block text-[14.5px] font-extrabold">{t.menu.openOrder}</span>
             <span className="block text-[12.5px] font-semibold opacity-80">
               {openOrder.payment_status === "claimed"
-                ? "Esperando que caja confirme tu pago"
-                : ORDER_STATUS_LABELS[openOrder.status]}
+                ? t.menu.waitingCaja
+                : t.status[openOrder.status]}
             </span>
           </span>
-          <span className="shrink-0 text-[13px] font-extrabold">Ver →</span>
+          <span className="shrink-0 text-[13px] font-extrabold">{t.menu.see}</span>
         </button>
       )}
 
@@ -459,7 +470,7 @@ export default function MesaPage({
                     className="flex gap-3.5 p-3.5"
                     style={{ cursor: hasMore ? "pointer" : "default" }}
                   >
-                    <ItemImage item={item} />
+                    <ItemImage item={item} soldoutLabel={t.menu.soldoutBadge} />
                     <div className="min-w-0 flex-1">
                       <div
                         className="font-extrabold"
@@ -497,7 +508,7 @@ export default function MesaPage({
                               borderRadius: 999,
                             }}
                           >
-                            Agotado
+                            {t.menu.soldout}
                           </span>
                         ) : qty > 0 ? (
                           <div
@@ -562,7 +573,7 @@ export default function MesaPage({
                               fontSize: 14,
                             }}
                           >
-                            Agregar
+                            {t.menu.add}
                           </button>
                         )}
                       </div>
@@ -613,7 +624,7 @@ export default function MesaPage({
             {cartCount}
           </span>
           <span className="font-extrabold" style={{ fontSize: 16 }}>
-            Ver pedido
+            {t.menu.viewOrder}
           </span>
           <span
             className="ml-auto font-extrabold"
@@ -647,10 +658,10 @@ export default function MesaPage({
             </div>
             <div className="flex items-center px-5 pb-3 pt-1">
               <h3 className="font-extrabold" style={{ fontSize: 22 }}>
-                Tu pedido
+                {t.menu.yourOrder}
               </h3>
               <span className="ml-auto font-bold" style={{ fontSize: 13, color: "#8a8177" }}>
-                Mesa {code}
+                {fmt(t.common.table, { n: code })}
               </span>
             </div>
 
@@ -705,12 +716,12 @@ export default function MesaPage({
               </div>
 
               <div className="mt-4 mb-1.5 font-extrabold" style={{ fontSize: 14 }}>
-                Notas para cocina
+                {t.menu.notes}
               </div>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ej: sin cebolla, término de cocción…"
+                placeholder={t.menu.notesPh}
                 style={{
                   width: "100%",
                   minHeight: 64,
@@ -726,7 +737,7 @@ export default function MesaPage({
               />
 
               <div className="mt-5 mb-2.5 font-extrabold" style={{ fontSize: 14 }}>
-                ¿Cómo pagas?
+                {t.menu.howPay}
               </div>
               <div className="grid grid-cols-2 gap-2.5 pb-3">
                 {methods.map((m) => {
@@ -752,13 +763,13 @@ export default function MesaPage({
                           className="block font-extrabold"
                           style={{ fontSize: 14, color: "#211d18" }}
                         >
-                          {m.label}
+                          {t.pay[m.id]?.label ?? m.id}
                         </span>
                         <span
                           className="block"
                           style={{ fontSize: 11.5, color: "#8a8177", lineHeight: 1.2 }}
                         >
-                          {m.description}
+                          {t.pay[m.id]?.desc}
                         </span>
                       </span>
                     </button>
@@ -795,18 +806,17 @@ export default function MesaPage({
                 }}
               >
                 {submitting ? (
-                  "Enviando a cocina…"
+                  t.menu.sending
                 ) : (
                   <>
-                    Enviar pedido<span style={{ opacity: 0.85 }}>·</span>
+                    {t.menu.send}
+                    <span style={{ opacity: 0.85 }}>·</span>
                     {formatMoney(cartTotal, currency)}
                   </>
                 )}
               </button>
               <p className="mt-2 text-center" style={{ fontSize: 12, color: "#8a8177" }}>
-                {payingInApp
-                  ? "Al enviar el pedido verás el QR para pagar desde tu celular."
-                  : "El pago se realiza en el local al finalizar. Tu pedido va directo a cocina."}
+                {payingInApp ? t.menu.payInApp : t.menu.payLater}
               </p>
             </div>
           </div>
