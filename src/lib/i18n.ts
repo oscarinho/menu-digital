@@ -16,7 +16,15 @@ import type { OrderStatus } from "./types";
 // ser chino, peruano o americano, la administración lleva la suya, independiente.
 export type Lang = "es" | "en" | "zh";
 
-export type Surface = "home" | "menu" | "track" | "cocina" | "caja" | "salon" | "admin";
+export type Surface =
+  | "home"
+  | "hub"
+  | "menu"
+  | "track"
+  | "cocina"
+  | "caja"
+  | "salon"
+  | "admin";
 
 export const LANGS: { id: Lang; label: string; aria: string }[] = [
   { id: "es", label: "ES", aria: "Español" },
@@ -108,6 +116,53 @@ export interface Dict {
     connError: string;
     staffHint: string;
     adminHint: string;
+  };
+  // La portada del producto: lo que ve el dueño de un restaurante que todavía no
+  // nos ha comprado nada. Va en tres idiomas porque el dueño puede ser chino,
+  // peruano o americano — que es exactamente de donde salió todo esto.
+  landing: {
+    eyebrow: string;
+    h1: string;
+    lead: string;
+    ctaDemo: string;
+    ctaTalk: string;
+    featuresTitle: string;
+    f1t: string;
+    f1d: string;
+    f2t: string;
+    f2d: string;
+    f3t: string;
+    f3d: string;
+    f4t: string;
+    f4d: string;
+    f5t: string;
+    f5d: string;
+    forWhoTitle: string;
+    forWhoLead: string;
+    smallT: string;
+    smallD: string;
+    midT: string;
+    midD: string;
+    bigT: string;
+    bigD: string;
+    soonTitle: string;
+    soonText: string;
+    footer: string;
+  };
+  // La puerta de un local: la pantalla que abre el personal en la tablet.
+  hub: {
+    staffTitle: string;
+    ownerTitle: string;
+    dinerTitle: string;
+    cocinaHint: string;
+    cajaHint: string;
+    salonHint: string;
+    adminHint: string;
+    dinerHint: string;
+    seeMenu: string;
+    installTitle: string;
+    installText: string;
+    notFound: string;
   };
   home: {
     demo: string;
@@ -314,6 +369,51 @@ const es: Dict = {
     connError: "Error de conexión",
     staffHint: "¿No tienes el PIN? Pídelo al administrador del restaurante.",
     adminHint: "El PIN del dueño se cambia desde Admin → Cobros y seguridad.",
+  },
+  landing: {
+    eyebrow: "Vectaryx",
+    h1: "El sistema de tu restaurante.",
+    lead: "Tus clientes piden desde su mesa. La cocina lo ve al instante. La caja cuadra sola. Sin comandas de papel, sin apps que instalar y sin comisiones de delivery.",
+    ctaDemo: "Ver cómo funciona",
+    ctaTalk: "Quiero Vectaryx en mi local",
+    featuresTitle: "Lo que hace",
+    f1t: "El cliente pide sin esperar al mozo",
+    f1d: "Escanea el QR de su mesa y ahí está tu carta, con fotos. Pide y paga desde su celular.",
+    f2t: "La cocina lo ve al instante",
+    f2d: "La comanda cae sola en la pantalla del pase, con su cronómetro. Nadie corre con papelitos.",
+    f3t: "La caja cobra y cuadra",
+    f3d: "Yape, Plin, tarjeta o efectivo. Al cierre, lo cobrado del día está ahí, sin sumar a mano.",
+    f4t: "El salón, de un vistazo",
+    f4d: "Qué mesa pidió, cuál está esperando y cuál hay que cobrar. El color lo dice todo.",
+    f5t: "Cada pantalla, en su idioma",
+    f5d: "Español, inglés y chino. La cocina puede estar en chino y la caja en español, a la vez.",
+    forWhoTitle: "Para cualquier lugar de comida",
+    forWhoLead: "El mismo sistema, del más sencillo al más completo. Pagas por lo que usas.",
+    smallT: "El menú de la esquina",
+    smallD: "Una carta, una cocina, una caja. Nada más que aprender.",
+    midT: "La cevichería, el chifa",
+    midD: "Mesas con QR, mozos, salón y cierre de caja.",
+    bigT: "El restaurante formal",
+    bigD: "Todo lo anterior, y lo que viene: boleta electrónica, reportes e inventario.",
+    soonTitle: "Se está construyendo.",
+    soonText:
+      "Hoy funciona lo de arriba. La pasarela de pago, la boleta SUNAT y el inventario están en camino. Si te interesa entrar como piloto, hablamos.",
+    footer: "Vectaryx · Pedidos, cocina y caja para lugares de comida · Lima, Perú",
+  },
+  hub: {
+    staffTitle: "Personal",
+    ownerTitle: "Dueño",
+    dinerTitle: "El comensal",
+    cocinaHint: "Las comandas del pase",
+    cajaHint: "Cobros y cuentas del día",
+    salonHint: "Las mesas del local",
+    adminHint: "Carta, marca, mesas y cobros",
+    dinerHint: "Lo que ve quien escanea el QR de una mesa.",
+    seeMenu: "Ver la carta",
+    installTitle: "Instálalo en la tablet",
+    installText:
+      "Añade esta pantalla a la pantalla de inicio y se abrirá sola, a pantalla completa, sin barra de navegador.",
+    notFound: "Este restaurante no existe.",
   },
   home: {
     demo: "Vectaryx · demo",
@@ -536,6 +636,51 @@ const en: Dict = {
     staffHint: "No PIN? Ask the restaurant's administrator.",
     adminHint: "Change the owner PIN in Admin → Payments & security.",
   },
+  landing: {
+    eyebrow: "Vectaryx",
+    h1: "Your restaurant's operating system.",
+    lead: "Diners order from their table. The kitchen sees it instantly. The till balances itself. No paper tickets, no app to install, no delivery commissions.",
+    ctaDemo: "See how it works",
+    ctaTalk: "I want Vectaryx in my place",
+    featuresTitle: "What it does",
+    f1t: "Diners order without waiting for a waiter",
+    f1d: "They scan the QR on their table and there's your menu, with photos. They order and pay from their phone.",
+    f2t: "The kitchen sees it instantly",
+    f2d: "The ticket lands on the pass screen on its own, with a timer. Nobody runs around with slips of paper.",
+    f3t: "The till charges and balances",
+    f3d: "Yape, Plin, card or cash. At closing, the day's takings are right there — no adding up by hand.",
+    f4t: "The floor, at a glance",
+    f4d: "Which table ordered, which is waiting, which needs charging. The colour says it all.",
+    f5t: "Every screen in its own language",
+    f5d: "Spanish, English and Chinese. The kitchen can be in Chinese while the till is in Spanish, at the same time.",
+    forWhoTitle: "For any place that serves food",
+    forWhoLead: "The same system, from the simplest to the most complete. You pay for what you use.",
+    smallT: "The corner lunch spot",
+    smallD: "One menu, one kitchen, one till. Nothing else to learn.",
+    midT: "The ceviche house, the chifa",
+    midD: "QR tables, waiters, floor map and end-of-day close.",
+    bigT: "The formal restaurant",
+    bigD: "All of the above, plus what's coming: e-invoicing, reports and inventory.",
+    soonTitle: "Still being built.",
+    soonText:
+      "What's above works today. The payment gateway, tax e-invoicing and inventory are on the way. If you'd like to come in as a pilot, let's talk.",
+    footer: "Vectaryx · Orders, kitchen and till for places that serve food · Lima, Peru",
+  },
+  hub: {
+    staffTitle: "Staff",
+    ownerTitle: "Owner",
+    dinerTitle: "The diner",
+    cocinaHint: "Tickets on the pass",
+    cajaHint: "Payments and today's takings",
+    salonHint: "The tables in the room",
+    adminHint: "Menu, brand, tables and payments",
+    dinerHint: "What someone scanning a table's QR sees.",
+    seeMenu: "See the menu",
+    installTitle: "Install it on the tablet",
+    installText:
+      "Add this screen to the home screen and it will open on its own, full screen, with no browser bar.",
+    notFound: "This restaurant doesn't exist.",
+  },
   home: {
     demo: "Vectaryx · demo",
     h1: "Your restaurant takes its own orders.",
@@ -755,6 +900,50 @@ const zh: Dict = {
     connError: "连接错误",
     staffHint: "没有 PIN 码？请向餐厅管理员索取。",
     adminHint: "店主 PIN 码可在「管理后台 → 收款与安全」中修改。",
+  },
+  landing: {
+    eyebrow: "Vectaryx",
+    h1: "让餐厅自己运转的系统。",
+    lead: "客人在餐桌上直接点单，后厨即时收到，收银自动对账。不用手写单据，不用下载 App，也没有外卖平台抽成。",
+    ctaDemo: "看看它怎么运作",
+    ctaTalk: "我想在我的店里用",
+    featuresTitle: "它能做什么",
+    f1t: "客人不用等服务员",
+    f1d: "扫一扫桌上的二维码，带图片的菜单就在眼前。用手机点单、付款。",
+    f2t: "后厨即时看到",
+    f2d: "订单自动出现在出餐屏上，还带计时。没人再拿着纸条跑来跑去。",
+    f3t: "收银收款、自动对账",
+    f3d: "Yape、Plin、刷卡或现金。打烊时，当天的收款一目了然，不用手算。",
+    f4t: "大堂一览无余",
+    f4d: "哪桌点了单、哪桌在等、哪桌该收钱。看颜色就知道。",
+    f5t: "每块屏幕，各说各的语言",
+    f5d: "西班牙语、英语、中文。后厨可以是中文，收银同时是西班牙语。",
+    forWhoTitle: "适合任何餐饮场所",
+    forWhoLead: "同一套系统，从最简单到最完整。用多少，付多少。",
+    smallT: "街角的小饭馆",
+    smallD: "一份菜单、一个后厨、一台收银。没别的要学。",
+    midT: "海鲜餐厅、中餐馆",
+    midD: "二维码餐桌、服务员、大堂图和每日结账。",
+    bigT: "正规餐厅",
+    bigD: "以上全部，加上即将上线的：电子发票、报表和库存。",
+    soonTitle: "仍在建设中。",
+    soonText:
+      "上面这些今天已经可以用了。支付网关、SUNAT 电子发票和库存正在路上。如果想作为试点加入，欢迎聊聊。",
+    footer: "Vectaryx · 为餐饮场所打造的点单、后厨与收银系统 · 秘鲁利马",
+  },
+  hub: {
+    staffTitle: "员工",
+    ownerTitle: "店主",
+    dinerTitle: "客人",
+    cocinaHint: "出餐口的订单",
+    cajaHint: "收款与当日账目",
+    salonHint: "店内的餐桌",
+    adminHint: "菜单、品牌、餐桌与收款",
+    dinerHint: "扫描餐桌二维码的人看到的画面。",
+    seeMenu: "查看菜单",
+    installTitle: "装到平板上",
+    installText: "把这个页面添加到主屏幕，它就会独立全屏打开，看不到浏览器地址栏。",
+    notFound: "该餐厅不存在。",
   },
   home: {
     demo: "Vectaryx · 演示",

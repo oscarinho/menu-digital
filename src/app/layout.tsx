@@ -15,10 +15,17 @@ const body = Nunito_Sans({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+// Los metadatos por defecto son los de la marca. Cada pantalla de un local los pisa
+// con los suyos —nombre, icono y color del restaurante— desde su propio layout:
+// ver lib/app-shell. De ahí el template "%s": el título del local manda solo, sin
+// que le colguemos "Vectaryx" detrás. La tablet de la cocina es del restaurante.
 export const metadata: Metadata = {
-  title: "Vectaryx · Pedidos en mesa",
+  title: {
+    default: "Vectaryx · El sistema de tu restaurante",
+    template: "%s",
+  },
   description:
-    "Superapp para restaurantes: el cliente pide desde la mesa, la cocina recibe al instante y la caja cobra sin fricción.",
+    "Pedidos desde la mesa, cocina y caja para lugares de comida. El cliente pide desde su celular, la cocina lo ve al instante y la caja cuadra sola.",
 };
 
 export default function RootLayout({
