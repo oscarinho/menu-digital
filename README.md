@@ -42,13 +42,29 @@ carta en PDF).
 
 | Ruta | Quién la usa |
 | --- | --- |
-| `/` | Portada: índice de la demo, con los dos restaurantes |
-| `/r/{slug}/mesa/1` | Cliente: menú con fotos, carrito y envío del pedido (abrir en el celular) |
+| `/` | Portada del producto: lo que ve un dueño de restaurante que aún no ha comprado nada |
+| `/demo` | Índice de la demo pública, con los dos restaurantes. No es la cara del producto |
+| `/{slug}` | **La puerta del local**: su logo, su color y sus pantallas. Lo que el personal abre en la tablet |
+| `/{slug}/manifest.webmanifest` | Manifest del local: lo que permite instalarlo como app (icono en `/api/icon/{slug}`) |
+| `/r/{slug}/mesa/1` | Cliente: carta con fotos y buscador, carrito y envío del pedido (abrir en el celular) |
 | `/pedido/[id]` | Cliente: tracking en vivo + pago Yape/Plin ("Ya pagué ✓") |
 | `/cocina/{slug}` | Cocina (KDS): Nuevos → En preparación → Listos, con alerta sonora opcional. Requiere PIN |
 | `/caja/{slug}` | Caja: cuentas por mesa, confirmación de pagos Yape/Plin informados por el cliente, cobro con tarjeta/efectivo. Requiere PIN |
+| `/salon/{slug}` | Salón: el plano de las mesas, deducido de los pedidos. Requiere PIN |
 | `/admin/{slug}` | Administración: menú (fotos, precios, disponibilidad), mesas con QR imprimible, datos de cobro (números Yape/Plin, QR de pago, cambio de PIN). Requiere PIN del dueño |
-| `/plataforma` | Operador Vectaryx: alta de restaurantes, mensualidad, métricas del día, suspender/reactivar. Requiere clave de plataforma |
+| `/plataforma` | Operador Vectaryx: alta de restaurantes, mensualidad, métricas del día, suspender/reactivar. Requiere clave de plataforma. **No se enlaza desde ninguna pantalla pública** |
+
+Las cuatro pantallas del personal (cocina, caja, salón, admin) comparten una misma
+cabecera (`src/components/StaffShell.tsx`) con la marca del local y navegación entre
+ellas: son una aplicación, no cuatro páginas sueltas. Cada local es **instalable**:
+manifest e icono propios, y al abrirlo desde el icono no hay barra de navegador.
+
+## Comprobaciones
+
+```bash
+npm test     # 25 tests: aislamiento entre locales, día de negocio, flujo del pedido
+npm run check  # tipos + lint + tests
+```
 
 ## Autenticación
 

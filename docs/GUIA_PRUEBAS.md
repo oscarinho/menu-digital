@@ -23,11 +23,21 @@ que hay que ver: la misma aplicación con otra marca, otra carta y otro idioma.
 | **Punto Azul** | Cevichería limeña. Azul, 113 platos. |
 | **Lanzhou Noodles** | Fideos chinos del noroeste. Verde, carta en chino con la traducción debajo. |
 
-Empieza en la **portada**, que es el índice de todo: ahí están las pantallas de
-cada restaurante.
+La **portada** (`/`) es la cara del producto: lo que vería un dueño de restaurante
+antes de comprarlo. Desde ahí, **"Ver cómo funciona"** te lleva a **`/demo`**, que
+es el índice de esta prueba: los dos restaurantes.
+
+Cada local se abre por **su propia puerta** (`/punto-azul`, `/lanzhou-noodles`):
+ahí manda su logo y su color, y desde ella se entra a cocina, caja, salón y
+administración. Es lo que el personal abriría en la tablet.
 
 **Los PIN son `1234`** (tanto el del personal como el del dueño, para que puedas
 pasear por todo).
+
+> **Pruébalo como app, no como web.** En la puerta de un local, usa el menú del
+> navegador → *Instalar aplicación* / *Añadir a pantalla de inicio*. Queda un icono
+> con el color y las iniciales del restaurante, y al abrirlo no hay barra de
+> direcciones ni pestañas. Así es como lo usa una cocina de verdad.
 
 ---
 
@@ -60,6 +70,9 @@ escanear el QR pegado en su mesa: en el local de verdad no eliges, te lo da el Q
 Aquí puedes entrar como cualquiera de las 10 mesas — hazlo desde dos o tres
 distintas, y en el paso 4 verás el salón llenarse.
 
+- **Busca un plato.** La carta de Punto Azul tiene 113 y 16 categorías. Escribe
+  "ceviche" arriba: la carta entera se vuelve una sola lista. Sin eso, encontrar
+  algo era ir pestaña por pestaña — dinos si ahora lo encuentras rápido.
 - Toca un plato para ver la foto grande, los ingredientes y el detalle.
 - Agrega dos o tres platos. Mira cómo crece el carrito abajo.
 - Elige **Yape** y envía el pedido.

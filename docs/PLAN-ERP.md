@@ -258,10 +258,34 @@ que puede pasar: que un local vea los pedidos de otro.
 - Avisos nivel 1: la pantalla del cliente vibra, suena y cambia el título al
   pasar a Listo.
 
-**1D · Producto, no demo**
-- `/` pasa a ser la portada de Vectaryx; el índice de la demo se muda a `/demo`.
-- README y `docs/` dejan de describir "la demo" y describen el producto.
-- **Llamar al mozo** (modo salón; migración 8).
+**1D · Producto, no demo** ✅ _(hecho, salvo llamar al mozo)_
+
+Se adelantó a 1B/1C porque, mirando la app corriendo, la sensación era "esto sigue
+siendo una demo". No lo era por el aspecto: era que **el producto no tenía puertas**.
+La portada listaba dos restaurantes de mentira con todas sus pantallas internas y el
+PIN al lado — el índice de un desarrollador, no un producto. Y no había forma de que
+pareciera una app, porque literalmente no lo era: sin manifest, sin iconos, el
+cocinero abría Chrome y veía la barra de direcciones.
+
+- `/` es la portada de Vectaryx; el índice de la demo vive en `/demo`. `/plataforma`
+  deja de enlazarse desde ninguna pantalla pública.
+- **`/{slug}`, la puerta de cada local**: su logo, su color, sus pantallas. La palabra
+  Vectaryx no aparece: la tablet es del restaurante.
+- **Instalable**: manifest e icono por local (generados con su color y sus iniciales),
+  título y color de marca propios. Se abre desde el icono, a pantalla completa.
+- **Las cinco pantallas son una sola app**: `StaffShell` les da la misma cabecera, con
+  la marca del local y navegación entre ellas. Fuera los emojis como iconos.
+- Cada pantalla, rediseñada para su oficio: la cocina se mira 2 s desde 3 m; la caja
+  es un POS, no una hoja de cálculo; el salón es un mapa de manchas.
+- **La carta tiene buscador** (113 platos, 16 categorías: sin él había que ir pestaña
+  por pestaña — era la pregunta con ojo crítico de `GUIA_PRUEBAS.md` sin respuesta).
+- **El admin deja de usar los cuadros del navegador**: el precio se edita donde está,
+  borrar pregunta en una ventana nuestra y los fallos se dicen dentro de la app. El
+  `window.prompt` para cambiar un precio era lo más "alfa" que había, y ni se traducía
+  al chino.
+
+_Pendiente de este tramo:_ **llamar al mozo** (modo salón; migración 8). Se hace con
+1B, que es donde entra el esquema.
 
 **Criterio de cierre de la Fase 1**: una juguería sin un solo mozo puede operar
 el día completo — el cliente pide del QR del mostrador, la cocina prepara, la TV
