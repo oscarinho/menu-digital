@@ -1,8 +1,8 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import LangSwitch from "@/app/components/LangSwitch";
-import StaffGate from "@/app/components/StaffGate";
+import LangSwitch from "@/components/LangSwitch";
+import StaffGate from "@/components/StaffGate";
 import { fmt, payLabel, useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import { formatMoney } from "@/lib/money";

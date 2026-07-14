@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import LangSwitch from "@/app/components/LangSwitch";
+import LangSwitch from "@/components/LangSwitch";
 import { useT, type Surface } from "@/lib/i18n";
 import type { StaffRole } from "@/lib/types";
 

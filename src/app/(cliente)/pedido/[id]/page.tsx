@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import LangSwitch from "@/app/components/LangSwitch";
+import LangSwitch from "@/components/LangSwitch";
 import { forgetOrder, isOrderOpen } from "@/lib/active-order";
 import { STATUS_TONE, brandVars, initialsOf } from "@/lib/brand";
 import { fmt, payLabel, useT } from "@/lib/i18n";

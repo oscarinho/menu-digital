@@ -2,7 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import LangSwitch from "@/app/components/LangSwitch";
+import LangSwitch from "@/components/LangSwitch";
 import { forgetOrder, isOrderOpen, recallOrder, rememberOrder } from "@/lib/active-order";
 import { contrastOn, initialsOf } from "@/lib/brand";
 import { fmt, useT } from "@/lib/i18n";

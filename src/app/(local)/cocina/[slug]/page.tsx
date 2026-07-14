@@ -1,8 +1,8 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import LangSwitch from "@/app/components/LangSwitch";
-import StaffGate from "@/app/components/StaffGate";
+import LangSwitch from "@/components/LangSwitch";
+import StaffGate from "@/components/StaffGate";
 import { useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import type { OrderStatus, OrderWithDetails } from "@/lib/types";

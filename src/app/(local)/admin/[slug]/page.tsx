@@ -1,8 +1,8 @@
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import LangSwitch from "@/app/components/LangSwitch";
-import StaffGate from "@/app/components/StaffGate";
+import LangSwitch from "@/components/LangSwitch";
+import StaffGate from "@/components/StaffGate";
 import { DEFAULT_BRAND, brandVars, initialsOf } from "@/lib/brand";
 import { fmt, useT, type Dict } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";

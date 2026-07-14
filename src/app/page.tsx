@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import LangSwitch from "@/app/components/LangSwitch";
+import LangSwitch from "@/components/LangSwitch";
 import { initialsOf } from "@/lib/brand";
 import { fmt, useT, type Lang } from "@/lib/i18n";
 

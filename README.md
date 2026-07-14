@@ -27,10 +27,14 @@ local real deben ser distintos) · clave de plataforma: la que pongas en
 Para que otro la pruebe: [docs/GUIA_PRUEBAS.md](docs/GUIA_PRUEBAS.md) es el guion
 que se le pasa, y [docs/DEMO.md](docs/DEMO.md) explica cómo publicarla gratis.
 
-**Estructura**: `src/` la app · `scripts/` utilidades de línea de comandos ·
-`demo/` el snapshot de la demo pública · `docs/` las guías (despliegue, pruebas,
-demo, revisión técnica) · `ops/` material de trabajo que no es parte del producto
-(prompts de imágenes, arte generado, la carta en PDF).
+**Estructura**: `src/app/` las rutas, agrupadas por quién las usa — `(cliente)`
+carta y seguimiento, `(local)` cocina/caja/salón/admin, `(operador)` plataforma
+(los paréntesis no cambian las URL) · `src/components/` UI compartida ·
+`src/lib/` infraestructura (db, auth, i18n) · `scripts/` utilidades de línea de
+comandos · `demo/` el snapshot de la demo pública · `docs/` las guías (el plan
+de producto está en [docs/PLAN-ERP.md](docs/PLAN-ERP.md)) · `ops/` material de
+trabajo que no es parte del producto (prompts de imágenes, arte generado, la
+carta en PDF).
 
 ## Superficies
 
