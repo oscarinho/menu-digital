@@ -29,10 +29,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
 
   // Sin esquinas redondeadas: Android e iOS recortan el icono a su manera, y una
   // esquina nuestra dentro de la suya se ve como un error. Fondo a sangre.
+  // DejaVu Sans primero, y no por gusto: la imagen de producción (node:24-slim) no
+  // trae ninguna tipografía, y el Dockerfile instala justo esa. Pedir solo
+  // "Helvetica, Arial" hacía que el servidor no encontrara con qué dibujar y el
+  // icono saliera con cuadraditos vacíos — en la tablet del cocinero.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
       <rect width="${size}" height="${size}" fill="${brand}"/>
       <text x="50%" y="50%" dy="0.35em" text-anchor="middle"
-            font-family="Helvetica, Arial, sans-serif" font-weight="700"
+            font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-weight="700"
             font-size="${size * (iniciales.length > 1 ? 0.4 : 0.55)}"
             fill="${tinta}">${iniciales}</text>
     </svg>`;

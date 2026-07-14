@@ -16,6 +16,15 @@ RUN npm run build
 FROM node:24-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+
+# El icono de cada local se dibuja aquí, al vuelo, con sus iniciales (api/icon).
+# node:24-slim no trae NI UNA tipografía: sin esto, el renderizador no encuentra con
+# qué dibujar las letras y saca cuadraditos vacíos — que es exactamente lo que salió
+# en el primer despliegue. En local no se veía, porque macOS sí tiene fuentes.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fonts-dejavu-core \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app ./
 RUN npm prune --omit=dev
 # La base SQLite y las fotos viven en /app/data; en producción se monta un
