@@ -1,9 +1,18 @@
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import LangSwitch from "@/components/LangSwitch";
 import StaffGate from "@/components/StaffGate";
-import { DEFAULT_BRAND, brandVars, initialsOf } from "@/lib/brand";
+import StaffShell from "@/components/StaffShell";
+import {
+  IconDinero,
+  IconEquis,
+  IconLapiz,
+  IconMarca,
+  IconPapelera,
+  IconPlato,
+  IconSalon,
+} from "@/components/icons";
+import { DEFAULT_BRAND, brandVars } from "@/lib/brand";
 import { fmt, useT, type Dict } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import type { Category, MenuItem, PublicRestaurant, Table } from "@/lib/types";
@@ -18,11 +27,11 @@ interface AdminData {
 type Tab = "menu" | "mesas" | "marca" | "cobros";
 
 // El icono no se traduce; el nombre sí, y sale de t.admin.tabs.
-const TABS: { key: Tab; icon: string }[] = [
-  { key: "menu", icon: "🍽️" },
-  { key: "mesas", icon: "🪑" },
-  { key: "cobros", icon: "💰" },
-  { key: "marca", icon: "🎨" },
+const TABS: { key: Tab; Icon: typeof IconPlato }[] = [
+  { key: "menu", Icon: IconPlato },
+  { key: "mesas", Icon: IconSalon },
+  { key: "cobros", Icon: IconDinero },
+  { key: "marca", Icon: IconMarca },
 ];
 
 const CARD: React.CSSProperties = {
@@ -52,10 +61,12 @@ function PhotoButton({
   t,
   label,
   onUploaded,
+  onError,
 }: {
   t: Dict;
   label: string;
   onUploaded: (url: string) => void;
+  onError: (msg: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -74,7 +85,7 @@ function PhotoButton({
           try {
             onUploaded(await uploadImage(file, t.admin.uploadFail));
           } catch (err) {
-            alert(err instanceof Error ? err.message : t.admin.uploadFail);
+            onError(err instanceof Error ? err.message : t.admin.uploadFail);
           } finally {
             setBusy(false);
           }
@@ -155,6 +166,13 @@ function AdminPanel({ slug }: { slug: string }) {
   const [paySaved, setPaySaved] = useState(false);
   const [brandColor, setBrandColor] = useState(DEFAULT_BRAND);
   const [brandSaved, setBrandSaved] = useState(false);
+  // El precio se edita donde está, y borrar pregunta en una ventana nuestra: los
+  // window.prompt/confirm/alert del navegador son cuadros grises del sistema, iguales
+  // en cualquier web del mundo. Nada dice "esto es un producto a medio hacer" más
+  // rápido que cambiar el precio de un plato en un cuadro de diálogo de Chrome.
+  const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
+  const [confirming, setConfirming] = useState<MenuItem | null>(null);
+  const [aviso, setAviso] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/restaurants/${slug}`, { cache: "no-store" });
@@ -217,20 +235,20 @@ function AdminPanel({ slug }: { slug: string }) {
     load();
   }
 
-  async function editPrice(item: MenuItem) {
-    const input = window.prompt(
-      fmt(t.admin.pricePrompt, { name: item.name }),
-      (item.price_cents / 100).toFixed(2)
-    );
-    if (input === null) return;
-    const amount = Number(input.replace(",", "."));
+  function guardarPrecio() {
+    if (!editing) return;
+    const amount = Number(editing.value.replace(",", "."));
+    const id = editing.id;
+    setEditing(null);
     if (!Number.isFinite(amount) || amount < 0) return;
-    patchItem(item.id, { priceCents: Math.round(amount * 100) });
+    patchItem(id, { priceCents: Math.round(amount * 100) });
   }
 
-  async function deleteItem(item: MenuItem) {
-    if (!window.confirm(fmt(t.admin.deleteConfirm, { name: item.name }))) return;
-    await fetch(`/api/menu-items/${item.id}`, { method: "DELETE" });
+  async function borrarPlato() {
+    if (!confirming) return;
+    const id = confirming.id;
+    setConfirming(null);
+    await fetch(`/api/menu-items/${id}`, { method: "DELETE" });
     load();
   }
 
@@ -291,7 +309,7 @@ function AdminPanel({ slug }: { slug: string }) {
       setPayForm((f) => ({ ...f, pin: "", adminPin: "" }));
       load();
     } else {
-      alert(t.admin.saveFail);
+      setAviso(t.admin.saveFail);
     }
   }
 
@@ -318,94 +336,62 @@ function AdminPanel({ slug }: { slug: string }) {
   }
 
   return (
-    // El color elegido tematiza el panel en vivo, aun antes de guardarlo.
-    <div
-      className="flex flex-1 justify-center px-5 py-7"
-      style={{ ...brandVars(brandColor), background: "var(--bg)" }}
+    <StaffShell
+      slug={slug}
+      surface="admin"
+      restaurant={{
+        name: data.restaurant.name,
+        logo: data.restaurant.logo,
+        // El color que el dueño está probando ahora mismo, no el guardado: así ve
+        // el panel entero teñido antes de decidir si le gusta.
+        brandColor: brandColor,
+      }}
+      t={t}
+      lang={lang}
+      onLang={setLang}
     >
       <div
-        className="grid w-full max-w-6xl overflow-hidden md:grid-cols-[250px_1fr]"
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 24,
-          boxShadow: "0 40px 90px -55px rgba(33,29,24,.5)",
-        }}
+        className="flex flex-1 justify-center px-4 py-6 sm:px-5"
+        style={{ ...brandVars(brandColor) }}
       >
-        {/* Barra lateral */}
-        <aside
-          className="px-4 py-[22px]"
-          style={{
-            background: "var(--surface-2)",
-            borderRight: "1px solid var(--border-2)",
-          }}
-        >
-          <div className="flex items-center gap-2.5 px-1.5 pb-5">
-            {data.restaurant.logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={data.restaurant.logo}
-                alt=""
-                className="h-[38px] w-[38px] object-cover"
-                style={{ borderRadius: 10, border: "1px solid var(--border-2)" }}
-              />
-            ) : (
-              <span
-                className="flex h-[38px] w-[38px] items-center justify-center text-sm font-extrabold"
-                style={{
-                  borderRadius: 10,
-                  background: "var(--brand)",
-                  color: "var(--brand-contrast)",
-                  fontFamily: "var(--font-display), system-ui, sans-serif",
-                }}
-              >
-                {initialsOf(data.restaurant.name)}
-              </span>
-            )}
-            <div className="min-w-0">
-              <p
-                className="truncate text-[15px] font-extrabold leading-none"
-                style={{ color: "var(--text)" }}
-              >
-                {data.restaurant.name}
-              </p>
-              <p
-                className="mt-1 text-[11.5px] font-semibold"
-                style={{ color: "var(--text-faint)" }}
-              >
-                {t.admin.role}
-              </p>
-            </div>
-          </div>
-
-          <div className="pb-4">
-            <LangSwitch lang={lang} onChange={setLang} />
-          </div>
-
-          <nav className="flex gap-1 overflow-x-auto md:flex-col">
+        <div className="grid w-full max-w-6xl gap-5 md:grid-cols-[220px_1fr] md:items-start">
+          {/* Las cuatro cosas que el dueño toca. */}
+          <nav
+            className="noscroll flex gap-1 overflow-x-auto p-1.5 md:flex-col"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-2)",
+              borderRadius: 16,
+            }}
+          >
             {TABS.map((item) => {
               const active = tab === item.key;
               return (
                 <button
                   key={item.key}
                   onClick={() => setTab(item.key)}
-                  className="flex shrink-0 items-center gap-2.5 px-3 py-2.5 text-sm font-bold"
+                  className="flex shrink-0 items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold transition"
                   style={{
                     borderRadius: 11,
                     background: active ? "var(--brand)" : "transparent",
                     color: active ? "var(--brand-contrast)" : "var(--text-muted)",
                   }}
                 >
-                  <span aria-hidden>{item.icon}</span>
+                  <item.Icon size={18} />
                   {t.admin.tabs[item.key]}
                 </button>
               );
             })}
           </nav>
-        </aside>
 
-        {/* Contenido */}
-        <main className="p-6 md:px-7 md:py-[26px]">
+          <main
+            className="min-w-0 p-5 sm:p-6"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-2)",
+              borderRadius: 20,
+            }}
+          >
           {tab === "menu" && (
             <>
               <div className="flex flex-wrap items-center gap-3">
@@ -476,20 +462,49 @@ function AdminPanel({ slug }: { slug: string }) {
                             </span>
                             <PhotoButton
                               t={t}
+                              onError={setAviso}
                               label={item.image ? t.admin.changePhoto : t.admin.photo}
                               onUploaded={(url) => patchItem(item.id, { image: url })}
                             />
-                            <button
-                              onClick={() => editPrice(item)}
-                              className="min-w-[70px] text-base font-extrabold tabular-nums"
-                              style={{
-                                color: "var(--text)",
-                                fontFamily: "var(--font-display), system-ui, sans-serif",
-                              }}
-                              title={t.admin.editPrice}
-                            >
-                              {formatMoney(item.price_cents, currency)} ✎
-                            </button>
+                            {editing?.id === item.id ? (
+                              <input
+                                autoFocus
+                                value={editing.value}
+                                onChange={(e) =>
+                                  setEditing({ id: item.id, value: e.target.value })
+                                }
+                                onBlur={guardarPrecio}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") guardarPrecio();
+                                  if (e.key === "Escape") setEditing(null);
+                                }}
+                                inputMode="decimal"
+                                className="w-[86px] px-2.5 py-1.5 text-base font-extrabold tabular-nums outline-none"
+                                style={{
+                                  ...INPUT,
+                                  borderColor: "var(--brand)",
+                                  fontFamily: "var(--font-display), system-ui, sans-serif",
+                                }}
+                              />
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  setEditing({
+                                    id: item.id,
+                                    value: (item.price_cents / 100).toFixed(2),
+                                  })
+                                }
+                                className="flex min-w-[86px] items-center gap-1.5 text-base font-extrabold tabular-nums"
+                                style={{
+                                  color: "var(--text)",
+                                  fontFamily: "var(--font-display), system-ui, sans-serif",
+                                }}
+                                title={t.admin.editPrice}
+                              >
+                                {formatMoney(item.price_cents, currency)}
+                                <IconLapiz size={13} className="opacity-40" />
+                              </button>
+                            )}
                             <AvailToggle
                               t={t}
                               on={!!item.available}
@@ -498,12 +513,13 @@ function AdminPanel({ slug }: { slug: string }) {
                               }
                             />
                             <button
-                              onClick={() => deleteItem(item)}
-                              className="px-2 py-1 text-sm"
+                              onClick={() => setConfirming(item)}
+                              className="px-2 py-1"
                               style={{ color: "var(--text-faint)" }}
                               title={t.admin.delete}
+                              aria-label={t.admin.delete}
                             >
-                              🗑
+                              <IconPapelera size={17} />
                             </button>
                           </div>
                         ))}
@@ -695,6 +711,7 @@ function AdminPanel({ slug }: { slug: string }) {
                     )}
                     <PhotoButton
                       t={t}
+                      onError={setAviso}
                       label={
                         data.restaurant.logo ? t.admin.changeLogo : t.admin.uploadLogo
                       }
@@ -726,6 +743,7 @@ function AdminPanel({ slug }: { slug: string }) {
                     <div className="mt-3">
                       <PhotoButton
                         t={t}
+                        onError={setAviso}
                         label={
                           data.restaurant.cover_image
                             ? t.admin.changeCover
@@ -955,6 +973,7 @@ function AdminPanel({ slug }: { slug: string }) {
                     )}
                     <PhotoButton
                       t={t}
+                      onError={setAviso}
                       label={
                         data.restaurant.payment_qr ? t.admin.changeQr : t.admin.uploadQr
                       }
@@ -965,9 +984,78 @@ function AdminPanel({ slug }: { slug: string }) {
               </div>
             </>
           )}
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+
+      {/* Borrar un plato pregunta en una ventana NUESTRA, con la marca del local y en
+          el idioma de la pantalla. El window.confirm era un cuadro gris del sistema,
+          idéntico al de cualquier web del mundo, y en chino ni se traducía. */}
+      {confirming && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-5">
+          <div
+            onClick={() => setConfirming(null)}
+            className="absolute inset-0"
+            style={{ background: "rgba(20,15,10,.5)", animation: "fadein .18s" }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative w-full max-w-sm p-6"
+            style={{
+              background: "var(--surface)",
+              borderRadius: 20,
+              boxShadow: "0 30px 70px -30px rgba(0,0,0,.5)",
+              animation: "reveal .18s ease both",
+            }}
+          >
+            <p className="text-[15px] font-bold leading-snug" style={{ color: "var(--text)" }}>
+              {fmt(t.admin.deleteConfirm, { name: confirming.name })}
+            </p>
+            <div className="mt-5 flex gap-2.5">
+              <button
+                onClick={() => setConfirming(null)}
+                className="flex-1 py-3 text-sm font-extrabold"
+                style={{
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                {t.caja.cancel}
+              </button>
+              <button
+                onClick={borrarPlato}
+                className="flex flex-1 items-center justify-center gap-2 py-3 text-sm font-extrabold text-white"
+                style={{ borderRadius: 12, background: "var(--danger)" }}
+              >
+                <IconPapelera size={16} />
+                {t.admin.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Y cuando algo falla, se dice aquí dentro, no en un alert() del navegador. */}
+      {aviso && (
+        <div
+          className="fixed inset-x-4 bottom-5 z-40 mx-auto flex max-w-sm items-center gap-3 px-4 py-3.5"
+          style={{
+            background: "var(--danger)",
+            color: "#fff",
+            borderRadius: 14,
+            boxShadow: "0 20px 40px -20px rgba(0,0,0,.5)",
+            animation: "reveal .2s ease both",
+          }}
+        >
+          <span className="flex-1 text-[13.5px] font-bold">{aviso}</span>
+          <button onClick={() => setAviso("")} aria-label="OK">
+            <IconEquis size={16} />
+          </button>
+        </div>
+      )}
+    </StaffShell>
   );
 }
 

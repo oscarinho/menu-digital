@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import LangSwitch from "@/components/LangSwitch";
+import { IconBuscar, IconCarrito, IconEquis, IconMas, IconMenos } from "@/components/icons";
 import { forgetOrder, isOrderOpen, recallOrder, rememberOrder } from "@/lib/active-order";
 import { contrastOn, initialsOf } from "@/lib/brand";
 import { fmt, useT } from "@/lib/i18n";
@@ -100,6 +101,7 @@ export default function MesaPage({
   const [cart, setCart] = useState<Record<string, number>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("yape");
   const [notes, setNotes] = useState("");
@@ -154,6 +156,22 @@ export default function MesaPage({
     data?.items.forEach((i) => (map[i.id] = i));
     return map;
   }, [data]);
+
+  // Con 113 platos y 16 categorías, ir pestaña por pestaña buscando el ceviche es
+  // trabajo. Escribiendo, la carta entera se convierte en una sola lista: la
+  // categoría deja de mandar y manda lo que el comensal escribió.
+  const buscando = query.trim().length > 0;
+  const visibles = useMemo(() => {
+    if (!data) return [];
+    if (!buscando) return data.items.filter((i) => i.category_id === activeCategory);
+    const q = query.trim().toLowerCase();
+    return data.items.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        i.detail.toLowerCase().includes(q)
+    );
+  }, [data, buscando, query, activeCategory]);
 
   const cartLines = Object.entries(cart).filter(([, q]) => q > 0);
   const cartCount = cartLines.reduce((s, [, q]) => s + q, 0);
@@ -392,7 +410,7 @@ export default function MesaPage({
 
       {/* ===== Barra de categorías (sticky) ===== */}
       <div
-        className="noscroll sticky top-0 z-20 flex gap-2 overflow-x-auto"
+        className="sticky top-0 z-20"
         style={{
           background: "rgba(255,255,255,.92)",
           backdropFilter: "blur(8px)",
@@ -400,7 +418,42 @@ export default function MesaPage({
           padding: "12px 16px",
         }}
       >
-        <div className="mx-auto flex w-full max-w-xl gap-2">
+        {/* El buscador. Sin esto, encontrar un plato en una carta de 113 es ir
+            pestaña por pestaña — que es exactamente lo que nos preguntaba la guía
+            de pruebas y no teníamos respuesta. */}
+        <div className="mx-auto w-full max-w-xl">
+          <div
+            className="flex items-center gap-2.5 px-3.5"
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd4c6",
+              borderRadius: 999,
+            }}
+          >
+            <span style={{ color: "#9a9086" }}>
+              <IconBuscar size={17} />
+            </span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t.menu.search}
+              className="min-w-0 flex-1 bg-transparent py-2.5 text-[14px] font-semibold outline-none"
+              style={{ color: "#211d18" }}
+            />
+            {buscando && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label={t.menu.allCats}
+                className="shrink-0"
+                style={{ color: "#9a9086" }}
+              >
+                <IconEquis size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="noscroll mx-auto mt-2.5 flex w-full max-w-xl gap-2 overflow-x-auto">
           {data.categories.map((c) => {
             const on = activeCategory === c.id;
             return (
@@ -439,12 +492,19 @@ export default function MesaPage({
             margin: "22px 4px 12px",
           }}
         >
-          {data.categories.find((c) => c.id === activeCategory)?.name}
+          {buscando
+            ? `${visibles.length} · ${query.trim()}`
+            : data.categories.find((c) => c.id === activeCategory)?.name}
         </h3>
+
+        {buscando && visibles.length === 0 && (
+          <p className="py-14 text-center font-semibold" style={{ color: "#9a9086" }}>
+            {t.menu.noResults}
+          </p>
+        )}
+
         <ul className="flex flex-col gap-3.5">
-          {data.items
-            .filter((i) => i.category_id === activeCategory)
-            .map((item) => {
+          {visibles.map((item) => {
               const qty = cart[item.id] ?? 0;
               const soldout = !item.available;
               const isOpen = expandedId === item.id;
@@ -518,6 +578,7 @@ export default function MesaPage({
                           >
                             <button
                               onClick={() => remove(item.id)}
+                              aria-label="−"
                               className="flex items-center justify-center"
                               style={{
                                 width: 34,
@@ -526,12 +587,9 @@ export default function MesaPage({
                                 borderRadius: 999,
                                 background: "transparent",
                                 color: brandContrast,
-                                fontSize: 22,
-                                fontWeight: 700,
-                                lineHeight: 1,
                               }}
                             >
-                              −
+                              <IconMenos size={18} />
                             </button>
                             <span
                               className="text-center font-extrabold"
@@ -541,6 +599,7 @@ export default function MesaPage({
                             </span>
                             <button
                               onClick={() => add(item.id)}
+                              aria-label="+"
                               className="flex items-center justify-center"
                               style={{
                                 width: 34,
@@ -549,12 +608,9 @@ export default function MesaPage({
                                 borderRadius: 999,
                                 background: "rgba(255,255,255,.22)",
                                 color: brandContrast,
-                                fontSize: 20,
-                                fontWeight: 700,
-                                lineHeight: 1,
                               }}
                             >
-                              +
+                              <IconMas size={18} />
                             </button>
                           </div>
                         ) : (
@@ -589,8 +645,8 @@ export default function MesaPage({
                     </div>
                   )}
                 </li>
-              );
-            })}
+            );
+          })}
         </ul>
       </main>
 
@@ -609,15 +665,16 @@ export default function MesaPage({
             boxShadow: "0 18px 34px -14px color-mix(in oklab, var(--brand), #000 20%)",
           }}
         >
+          <IconCarrito size={20} />
           <span
             className="flex items-center justify-center font-extrabold"
             style={{
-              minWidth: 28,
-              height: 28,
-              padding: "0 8px",
+              minWidth: 26,
+              height: 26,
+              padding: "0 7px",
               borderRadius: 999,
               background: "rgba(255,255,255,.28)",
-              fontSize: 14,
+              fontSize: 13.5,
               animation: "pop .3s",
             }}
           >

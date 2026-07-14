@@ -151,3 +151,95 @@ export function IconEquis({ size = 20, className }: P) {
     </svg>
   );
 }
+
+/** Buscar un plato en una carta de 113. */
+export function IconBuscar({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m15.5 15.5 4.5 4.5" />
+    </svg>
+  );
+}
+
+/** Uno más. */
+export function IconMas({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+/** Uno menos. */
+export function IconMenos({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+/** El carrito del comensal. */
+export function IconCarrito({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M3 4h2l2.2 10.5a2 2 0 0 0 2 1.5h7.4a2 2 0 0 0 2-1.6L20 8H6" />
+      <circle cx="9.5" cy="19.5" r="1.4" />
+      <circle cx="17" cy="19.5" r="1.4" />
+    </svg>
+  );
+}
+
+/** Borrar. */
+export function IconPapelera({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+/** Editar / lápiz. */
+export function IconLapiz({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M4 20h4L20 8a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+      <path d="M14.5 5.5 18.5 9.5" />
+    </svg>
+  );
+}
+
+/** La carta: platos y categorías. */
+export function IconPlato({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4" />
+    </svg>
+  );
+}
+
+/** El dinero del local: números de Yape/Plin y PINes. */
+export function IconDinero({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 6.5v11M14.8 9.2A2.8 2.8 0 0 0 12 8c-1.5 0-2.8.9-2.8 2s1.3 2 2.8 2 2.8.9 2.8 2-1.3 2-2.8 2a2.8 2.8 0 0 1-2.8-1.2" />
+    </svg>
+  );
+}
+
+/** La marca del local: su color y su logo. */
+export function IconMarca({ size = 20, className }: P) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.7 1.6-1.5 0-.4-.2-.8-.5-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8Z" />
+      <circle cx="7.5" cy="11.5" r="1.2" />
+      <circle cx="12" cy="7.5" r="1.2" />
+      <circle cx="16.5" cy="11" r="1.2" />
+    </svg>
+  );
+}

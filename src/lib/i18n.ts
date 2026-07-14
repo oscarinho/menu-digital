@@ -182,6 +182,9 @@ export interface Dict {
   menu: {
     loading: string;
     loadError: string;
+    search: string;
+    noResults: string;
+    allCats: string;
     closed: string;
     soldout: string;
     soldoutBadge: string;
@@ -436,6 +439,9 @@ const es: Dict = {
   menu: {
     loading: "Cargando menú…",
     loadError: "No se pudo cargar el menú",
+    search: "Buscar un plato…",
+    noResults: "No encontramos ese plato.",
+    allCats: "Todo",
     closed:
       "Por ahora no estamos recibiendo pedidos digitales. Pide tu carta al personal del local.",
     soldout: "Agotado",
@@ -702,6 +708,9 @@ const en: Dict = {
   menu: {
     loading: "Loading menu…",
     loadError: "Couldn't load the menu",
+    search: "Search a dish…",
+    noResults: "We couldn't find that dish.",
+    allCats: "All",
     closed: "We're not taking digital orders right now. Please ask the staff for a menu.",
     soldout: "Sold out",
     soldoutBadge: "SOLD OUT",
@@ -964,6 +973,9 @@ const zh: Dict = {
   menu: {
     loading: "菜单加载中…",
     loadError: "菜单加载失败",
+    search: "搜索菜品…",
+    noResults: "没有找到这道菜。",
+    allCats: "全部",
     closed: "目前暂不接受线上点餐，请向店内工作人员索取菜单。",
     soldout: "已售罄",
     soldoutBadge: "已售罄",
