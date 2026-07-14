@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import LangSwitch from "@/components/LangSwitch";
+import { IconAdmin, IconCaja, IconCocina, IconSalon } from "@/components/icons";
 import { brandVars, contrastOn, initialsOf, DEFAULT_BRAND } from "@/lib/brand";
 import { fmt, useT } from "@/lib/i18n";
 import type { PublicRestaurant, Table } from "@/lib/types";
@@ -17,10 +18,10 @@ import type { PublicRestaurant, Table } from "@/lib/types";
 // se teclea una vez y la tablet se queda dentro.
 
 const PANTALLAS = [
-  { key: "cocina", icon: "🔥", href: (s: string) => `/cocina/${s}`, admin: false },
-  { key: "caja", icon: "💳", href: (s: string) => `/caja/${s}`, admin: false },
-  { key: "salon", icon: "🪑", href: (s: string) => `/salon/${s}`, admin: false },
-  { key: "admin", icon: "⚙️", href: (s: string) => `/admin/${s}`, admin: true },
+  { key: "cocina", Icon: IconCocina, admin: false },
+  { key: "caja", Icon: IconCaja, admin: false },
+  { key: "salon", Icon: IconSalon, admin: false },
+  { key: "admin", Icon: IconAdmin, admin: true },
 ] as const;
 
 interface Data {
@@ -80,7 +81,7 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
   const tarjeta = (p: (typeof PANTALLAS)[number]) => (
     <Link
       key={p.key}
-      href={p.href(slug)}
+      href={`/${p.key}/${slug}`}
       className="flex items-center gap-4 p-5 transition hover:-translate-y-0.5"
       style={{
         background: "var(--surface)",
@@ -90,11 +91,10 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
       }}
     >
       <span
-        className="flex h-12 w-12 shrink-0 items-center justify-center text-xl"
-        style={{ borderRadius: 14, background: `${brand}14` }}
-        aria-hidden
+        className="flex h-12 w-12 shrink-0 items-center justify-center"
+        style={{ borderRadius: 14, background: `${brand}14`, color: brand }}
       >
-        {p.icon}
+        <p.Icon size={22} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-extrabold" style={{ color: "var(--text)" }}>
@@ -205,7 +205,7 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
           }}
         >
           <p className="text-[13.5px] font-extrabold" style={{ color: "var(--text)" }}>
-            📲 {t.hub.installTitle}
+            {t.hub.installTitle}
           </p>
           <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
             {t.hub.installText}

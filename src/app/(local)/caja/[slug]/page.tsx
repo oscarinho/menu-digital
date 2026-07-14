@@ -1,17 +1,25 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import LangSwitch from "@/components/LangSwitch";
 import StaffGate from "@/components/StaffGate";
+import StaffShell, { type Marca } from "@/components/StaffShell";
+import { IconCheck, IconEquis } from "@/components/icons";
 import { fmt, payLabel, useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import { formatMoney } from "@/lib/money";
 import { getPaymentMethods } from "@/lib/payments";
 import type { OrderWithDetails } from "@/lib/types";
 
-const GRID = "1.1fr 1fr 1.4fr .9fr";
+// La caja.
+//
+// Antes era una tabla con cabeceras de columna, como una hoja de cálculo. Un cajero
+// no lee columnas: busca una mesa, mira cuánto, cobra y pasa a la siguiente. Así que
+// ahora manda el dinero —las dos cifras del día arriba, grandes— y cada cuenta es una
+// fila que se toca con el pulgar, no una celda.
+//
+// Lo que el cliente dice haber pagado por Yape se resalta en ámbar: es lo único que
+// obliga a mirar el celular y comprobar que la plata llegó de verdad.
 
-// SQLite devuelve 'YYYY-MM-DD HH:MM:SS' en UTC.
 function hourOf(ts: string): string {
   return new Date(ts.replace(" ", "T") + "Z").toLocaleTimeString([], {
     hour: "2-digit",
@@ -22,6 +30,7 @@ function hourOf(ts: string): string {
 function CajaBoard({ slug }: { slug: string }) {
   const [t, lang, setLang] = useT("caja");
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [restaurant, setRestaurant] = useState<Marca | null>(null);
   const [currency, setCurrency] = useState("PEN");
   const [country, setCountry] = useState("PE");
   const [charging, setCharging] = useState<string | null>(null);
@@ -32,12 +41,11 @@ function CajaBoard({ slug }: { slug: string }) {
     let alive = true;
     async function load() {
       try {
-        const res = await fetch(`/api/orders?slug=${slug}&view=caja`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/orders?slug=${slug}&view=caja`, { cache: "no-store" });
         const d = await res.json();
         if (alive && res.ok) {
           setOrders(d.orders);
+          setRestaurant(d.restaurant ?? null);
           setCurrency(d.currency);
           setCountry(d.country ?? "PE");
         }
@@ -46,15 +54,15 @@ function CajaBoard({ slug }: { slug: string }) {
       }
     }
     load();
-    const t = setInterval(load, 4000);
+    const timer = setInterval(load, 4000);
     return () => {
       alive = false;
-      clearInterval(t);
+      clearInterval(timer);
     };
   }, [slug]);
 
-  // Cuentas abiertas arriba, cobradas hoy abajo. El cobro no borra el pedido: la
-  // caja necesita poder mirar atrás ("¿la mesa 3 pagó?", "¿cuánto llevamos?").
+  // Cuentas abiertas arriba, cobradas hoy abajo. El cobro no borra el pedido: la caja
+  // necesita poder mirar atrás ("¿la mesa 3 pagó?", "¿cuánto llevamos?").
   const open = orders.filter((o) => o.payment_status !== "paid");
   const paid = orders
     .filter((o) => o.payment_status === "paid")
@@ -88,103 +96,99 @@ function CajaBoard({ slug }: { slug: string }) {
     });
   }
 
-  return (
-    <div className="flex flex-1 flex-col px-5 py-7" style={{ background: "var(--bg)" }}>
-      <div className="mx-auto w-full max-w-5xl">
-        <div
-          className="overflow-hidden"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 24,
-            boxShadow: "0 40px 90px -55px rgba(33,29,24,.5)",
-          }}
-        >
-          {/* Cabecera */}
-          <header
-            className="flex flex-wrap items-center gap-3.5 px-6 py-[18px]"
-            style={{ borderBottom: "1px solid var(--border-2)" }}
-          >
-            <span
-              className="flex h-[34px] w-[34px] items-center justify-center"
-              style={{ borderRadius: 9, background: "var(--brand)" }}
-              aria-hidden
-            >
-              💳
-            </span>
-            <h1 className="text-[19px] font-extrabold" style={{ color: "var(--text)" }}>
-              {t.nav.caja} · {slug}
-            </h1>
-            <span className="text-sm font-semibold" style={{ color: "var(--text-faint)" }}>
-              {fmt(t.caja.toCharge, { amount: formatMoney(pendingTotal, currency) })}
-            </span>
-            <div className="ml-auto flex items-center gap-3">
-              {claimedCount > 0 && (
-                <span
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 text-[13px] font-extrabold"
-                  style={{
-                    borderRadius: 999,
-                    background: "var(--warning-soft)",
-                    color: "var(--warning)",
-                  }}
-                >
-                  {fmt(claimedCount === 1 ? t.caja.claimed1 : t.caja.claimedN, {
-                    n: claimedCount,
-                  })}
-                </span>
-              )}
-              <LangSwitch lang={lang} onChange={setLang} />
-            </div>
-          </header>
+  const cifra = (rotulo: string, valor: string, color: string) => (
+    <div
+      className="flex-1 px-5 py-4"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border-2)",
+        borderRadius: 18,
+      }}
+    >
+      <p
+        className="text-[11.5px] font-extrabold uppercase tracking-[0.1em]"
+        style={{ color: "var(--text-faint)" }}
+      >
+        {rotulo}
+      </p>
+      <p
+        className="mt-1 text-[28px] font-extrabold leading-none tabular-nums"
+        style={{ color, fontFamily: "var(--font-display), system-ui, sans-serif" }}
+      >
+        {valor}
+      </p>
+    </div>
+  );
 
-          {/* Encabezado de columnas */}
-          <div
-            className="hidden gap-4 px-6 py-3 text-xs font-extrabold uppercase tracking-[0.06em] md:grid"
+  return (
+    <StaffShell
+      slug={slug}
+      surface="caja"
+      restaurant={restaurant}
+      t={t}
+      lang={lang}
+      onLang={setLang}
+    >
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6">
+        {/* Las dos cifras del día: la primera pregunta del cajero y también la
+            última. Cuánto falta por cobrar y cuánto ha entrado. */}
+        <div className="flex flex-wrap gap-3">
+          {cifra(t.caja.colTotal, formatMoney(pendingTotal, currency), "var(--text)")}
+          {cifra(t.caja.paidToday, formatMoney(paidTotal, currency), "var(--success)")}
+        </div>
+
+        {claimedCount > 0 && (
+          <p
+            className="mt-3 px-4 py-3 text-[13.5px] font-extrabold"
             style={{
-              gridTemplateColumns: GRID,
-              background: "var(--surface-2)",
+              borderRadius: 14,
+              background: "var(--warning-soft)",
+              color: "var(--warning)",
+            }}
+          >
+            {fmt(claimedCount === 1 ? t.caja.claimed1 : t.caja.claimedN, { n: claimedCount })}
+          </p>
+        )}
+
+        <h2
+          className="mt-8 text-[12px] font-extrabold uppercase tracking-[0.12em]"
+          style={{ color: "var(--text-faint)" }}
+        >
+          {t.caja.colState}
+        </h2>
+
+        {open.length === 0 && (
+          <p
+            className="mt-3 py-14 text-center text-sm font-bold"
+            style={{
+              borderRadius: 18,
+              border: "2px dashed var(--border-2)",
               color: "var(--text-faint)",
             }}
           >
-            <div>{t.caja.colTable}</div>
-            <div>{t.caja.colTotal}</div>
-            <div>{t.caja.colState}</div>
-            <div className="text-right">{t.caja.colAction}</div>
-          </div>
+            {t.caja.noOpen}
+          </p>
+        )}
 
-          {open.length === 0 && (
-            <p
-              className="py-16 text-center font-semibold"
-              style={{ color: "var(--text-faint)" }}
-            >
-              {t.caja.noOpen}
-            </p>
-          )}
-
+        <div className="mt-3 flex flex-col gap-2.5">
           {open.map((o) => {
             const claimed = o.payment_status === "claimed";
-            const open = charging === o.id;
+            const eligiendo = charging === o.id;
             return (
-              <div
+              <article
                 key={o.id}
-                className="grid items-center gap-4 px-6 py-[18px]"
+                className="overflow-hidden"
                 style={{
-                  gridTemplateColumns: GRID,
-                  borderTop: "1px solid var(--border-2)",
-                  background: claimed ? "var(--warning-soft)" : "transparent",
+                  background: "var(--surface)",
+                  border: `1px solid ${claimed ? "var(--warning)" : "var(--border-2)"}`,
+                  borderRadius: 18,
+                  boxShadow: claimed ? "0 14px 30px -24px rgba(180,83,9,.6)" : "none",
                 }}
               >
-                {/* Mesa / pedido */}
-                <div className="flex items-center gap-3">
-                  {claimed && (
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: "var(--warning)" }}
-                    />
-                  )}
-                  <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:px-5">
+                  <div className="min-w-0 flex-1">
                     <p
-                      className="truncate text-[19px] font-extrabold leading-tight"
+                      className="truncate text-[20px] font-extrabold leading-tight"
                       style={{
                         color: "var(--text)",
                         fontFamily: "var(--font-display), system-ui, sans-serif",
@@ -193,94 +197,82 @@ function CajaBoard({ slug }: { slug: string }) {
                       {o.table_label}
                     </p>
                     <p
-                      className="text-[12.5px] font-semibold"
+                      className="mt-0.5 text-[12.5px] font-semibold"
                       style={{ color: "var(--text-faint)" }}
                     >
                       #{o.daily_number} ·{" "}
-                      {fmt(t.caja.items, {
-                        n: o.items.reduce((s, it) => s + it.quantity, 0),
-                      })}
+                      {fmt(t.caja.items, { n: o.items.reduce((s, it) => s + it.quantity, 0) })}
+                      {o.payment_method && ` · ${payLabel(t, o.payment_method)}`}
                     </p>
                   </div>
-                </div>
 
-                {/* Total */}
-                <p
-                  className="text-xl font-extrabold tabular-nums"
-                  style={{
-                    color: "var(--text)",
-                    fontFamily: "var(--font-display), system-ui, sans-serif",
-                  }}
-                >
-                  {formatMoney(o.total_cents, currency)}
-                </p>
-
-                {/* Estado de cobro */}
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {o.payment_method && (
+                  {/* El estado solo se dice cuando dice algo: poner "por cobrar" en una
+                      cuenta abierta es ruido. Lo que importa es lo que el cliente jura
+                      haber pagado ya. */}
+                  {claimed && (
                     <span
-                      className="inline-flex items-center gap-1.5 px-3 py-1 text-[13px] font-bold"
+                      className="px-3 py-1.5 text-[12px] font-extrabold"
                       style={{
                         borderRadius: 999,
-                        background: "var(--neutral-soft)",
-                        color: "var(--text-muted)",
+                        background: "var(--warning-soft)",
+                        color: "var(--warning)",
                       }}
                     >
-                      {payLabel(t, o.payment_method)}
+                      {t.caja.claimedChip}
                     </span>
                   )}
-                  <span
-                    className="px-3 py-1 text-[12.5px] font-extrabold"
+
+                  <p
+                    className="text-[24px] font-extrabold tabular-nums"
                     style={{
-                      borderRadius: 999,
-                      background: claimed ? "var(--info-soft)" : "var(--neutral-soft)",
-                      color: claimed ? "var(--info)" : "var(--neutral)",
+                      color: "var(--text)",
+                      fontFamily: "var(--font-display), system-ui, sans-serif",
                     }}
                   >
-                    {claimed ? t.caja.claimedChip : t.caja.toChargeChip}
-                  </span>
-                </div>
+                    {formatMoney(o.total_cents, currency)}
+                  </p>
 
-                {/* Acción */}
-                <div className="text-right">
                   {claimed ? (
                     <button
                       onClick={() => markPaid(o.id, o.payment_method)}
-                      className="px-4 py-3 text-sm font-extrabold text-white transition active:scale-[0.96]"
-                      style={{ borderRadius: 12, background: "var(--success)" }}
+                      className="flex items-center gap-2 px-5 py-3.5 text-sm font-extrabold text-white transition active:scale-[0.96]"
+                      style={{ borderRadius: 13, background: "var(--success)" }}
                     >
+                      <IconCheck size={17} />
                       {t.caja.confirm}
                     </button>
                   ) : (
                     <button
-                      onClick={() => setCharging(open ? null : o.id)}
-                      className="px-4 py-3 text-sm font-extrabold transition active:scale-[0.96]"
+                      onClick={() => setCharging(eligiendo ? null : o.id)}
+                      className="flex items-center gap-2 px-5 py-3.5 text-sm font-extrabold transition active:scale-[0.96]"
                       style={{
-                        borderRadius: 12,
-                        background: open ? "var(--neutral-soft)" : "var(--brand)",
-                        color: open ? "var(--text)" : "var(--brand-contrast)",
+                        borderRadius: 13,
+                        background: eligiendo ? "var(--neutral-soft)" : "var(--brand)",
+                        color: eligiendo ? "var(--text)" : "var(--brand-contrast)",
                       }}
                     >
-                      {open ? t.caja.cancel : t.caja.charge}
+                      {eligiendo && <IconEquis size={16} />}
+                      {eligiendo ? t.caja.cancel : t.caja.charge}
                     </button>
                   )}
                 </div>
 
-                {/* Selector de método (al pulsar "Cobrar") */}
-                {open && (
+                {/* Con qué pagó. Aparece al pulsar "Cobrar" y ocupa el ancho entero:
+                    botones grandes, porque se tocan con prisa y casi sin mirar. */}
+                {eligiendo && (
                   <div
-                    className="col-span-full flex flex-wrap gap-2 pt-1"
+                    className="flex flex-wrap gap-2 px-4 pb-4 sm:px-5"
                     style={{ animation: "reveal .18s ease both" }}
                   >
                     {methods.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => markPaid(o.id, m.id)}
-                        className="px-4 py-2.5 text-sm font-bold transition active:scale-[0.96]"
+                        className="flex-1 px-4 py-3.5 text-sm font-extrabold transition active:scale-[0.96]"
                         style={{
-                          borderRadius: 12,
+                          borderRadius: 13,
                           border: "1px solid var(--border)",
-                          background: "var(--surface)",
+                          background: "var(--surface-2)",
                           color: "var(--text)",
                         }}
                       >
@@ -289,34 +281,22 @@ function CajaBoard({ slug }: { slug: string }) {
                     ))}
                   </div>
                 )}
-              </div>
+              </article>
             );
           })}
         </div>
 
-        {/* Cobrados hoy: el pedido no se evapora al confirmarlo. Queda el registro
-            del día y el total, que es lo que la caja cuadra al cerrar. */}
+        {/* Cobrados hoy: el pedido no se evapora al confirmarlo. Queda el registro del
+            día, que es lo que la caja cuadra al cerrar. */}
         {paid.length > 0 && (
-          <div
-            className="mt-5 overflow-hidden"
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 24,
-            }}
-          >
-            <header
-              className="flex flex-wrap items-center gap-3 px-6 py-[18px]"
-              style={{ borderBottom: "1px solid var(--border-2)" }}
+          <>
+            <h2
+              className="mt-10 flex items-center gap-2.5 text-[12px] font-extrabold uppercase tracking-[0.12em]"
+              style={{ color: "var(--text-faint)" }}
             >
-              <h2
-                className="text-[15px] font-extrabold uppercase tracking-[0.05em]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {t.caja.paidToday}
-              </h2>
+              {t.caja.paidToday}
               <span
-                className="px-2.5 py-0.5 text-[13px] font-extrabold tabular-nums"
+                className="flex h-5 min-w-[20px] items-center justify-center px-1.5 text-[12px] tabular-nums"
                 style={{
                   borderRadius: 999,
                   background: "var(--success-soft)",
@@ -325,70 +305,58 @@ function CajaBoard({ slug }: { slug: string }) {
               >
                 {paid.length}
               </span>
-              <span
-                className="ml-auto text-lg font-extrabold tabular-nums"
-                style={{
-                  color: "var(--text)",
-                  fontFamily: "var(--font-display), system-ui, sans-serif",
-                }}
-              >
-                {formatMoney(paidTotal, currency)}
-              </span>
-            </header>
+            </h2>
 
-            {paid.map((o) => (
-              <div
-                key={o.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-6 py-3.5"
-                style={{ borderTop: "1px solid var(--border-2)" }}
-              >
-                <span
-                  className="text-[15px] font-extrabold"
-                  style={{
-                    color: "var(--text)",
-                    fontFamily: "var(--font-display), system-ui, sans-serif",
-                  }}
+            <div
+              className="mt-3 overflow-hidden"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border-2)",
+                borderRadius: 18,
+              }}
+            >
+              {paid.map((o, i) => (
+                <div
+                  key={o.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3.5"
+                  style={{ borderTop: i === 0 ? "none" : "1px solid var(--border-2)" }}
                 >
-                  {o.table_label}
-                </span>
-                <span
-                  className="text-[12.5px] font-semibold"
-                  style={{ color: "var(--text-faint)" }}
-                >
-                  #{o.daily_number} · {hourOf(o.updated_at)}
-                </span>
-                {o.payment_method && (
+                  <span className="shrink-0" style={{ color: "var(--success)" }}>
+                    <IconCheck size={15} />
+                  </span>
                   <span
-                    className="px-3 py-1 text-[12.5px] font-bold"
+                    className="text-[15px] font-extrabold"
                     style={{
-                      borderRadius: 999,
-                      background: "var(--neutral-soft)",
-                      color: "var(--text-muted)",
+                      color: "var(--text)",
+                      fontFamily: "var(--font-display), system-ui, sans-serif",
                     }}
                   >
-                    {payLabel(t, o.payment_method)}
+                    {o.table_label}
                   </span>
-                )}
-                <span
-                  className="ml-auto text-base font-extrabold tabular-nums"
-                  style={{ color: "var(--success)" }}
-                >
-                  {formatMoney(o.total_cents, currency)}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <span
+                    className="text-[12.5px] font-semibold tabular-nums"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    #{o.daily_number} · {hourOf(o.updated_at)}
+                    {o.payment_method && ` · ${payLabel(t, o.payment_method)}`}
+                  </span>
+                  <span
+                    className="ml-auto text-[16px] font-extrabold tabular-nums"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {formatMoney(o.total_cents, currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
-      </div>
-    </div>
+      </main>
+    </StaffShell>
   );
 }
 
-export default function CajaPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default function CajaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   return (
     <StaffGate slug={slug} surface="caja">

@@ -88,6 +88,14 @@ export async function GET(req: Request) {
     currency: restaurant.currency,
     // La caja arma con esto sus métodos de cobro; antes asumía "PE".
     country: restaurant.country,
+    // La cabecera de cocina, caja y salón enseñaba el slug ("punto-azul"): un
+    // residuo de programador en la pantalla que mira el cocinero. Con esto enseña
+    // la casa donde trabaja.
+    restaurant: {
+      name: restaurant.name,
+      logo: restaurant.logo,
+      brandColor: restaurant.brand_color,
+    },
     tables,
   });
 }
