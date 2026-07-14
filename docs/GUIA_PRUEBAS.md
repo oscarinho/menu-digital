@@ -80,9 +80,13 @@ Abre **Salón** de Punto Azul. Son las 10 mesas del local de un vistazo.
 - Las mesas donde nadie pidió están en gris (**Libre**). Las demás llevan el color
   de lo que les pasa: pedido nuevo, en cocina, listo para servir, por cobrar.
 - Arriba, cuánto hay sin cobrar en el salón ahora mismo.
-- **Ninguna mesa se marca a mano.** El estado sale del propio pedido: en cuanto la
-  caja confirma el cobro, la mesa se pone Libre sola. Pruébalo — cobra desde Caja
-  y vuelve aquí.
+- El estado sale del pedido: nadie lo escribe a mano. Pide desde el celular y mira
+  cómo la mesa cambia sola de color mientras la cocina avanza.
+- **Pagar no libera la mesa.** Cuando la caja confirma el cobro, la mesa queda en
+  **Cuenta cerrada**: esa gente ya no debe nada, pero sigue sentada con el café, y
+  la app no tiene forma de saber que se fue. La mesa solo queda **Libre** cuando
+  quien la recoge toca **Liberar mesa**. Es el único dato que le pedimos a una
+  persona, porque es el único que la app no puede deducir.
 
 ### 5 · Eres el dueño del restaurante
 

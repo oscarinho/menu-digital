@@ -75,6 +75,10 @@ export interface Table {
   restaurant_id: string;
   code: string;
   label: string;
+  // Cuándo alguien recogió la mesa por última vez ('' = nunca). La mesa está libre
+  // si su última cuenta se cerró antes de esta fecha: pagar no la libera, porque el
+  // comensal sigue sentado y la app no tiene forma de saber que se fue.
+  freed_at: string;
 }
 
 export interface Category {

@@ -153,6 +153,20 @@ const MIGRATIONS: ((db: Database.Database) => void)[] = [
       ALTER TABLE sessions_v3 RENAME TO sessions;
     `);
   },
+
+  // 4 · Cuándo se recogió la mesa. Que el pedido esté entregado y pagado no
+  // significa que la mesa esté libre: esa gente sigue ahí, con el café. La app ve
+  // pedidos, no sillas, y no hay ninguna señal de que el comensal se haya ido —ni
+  // siquiera un pedido nuevo lo prueba: pueden ser los mismos pidiendo postre.
+  //
+  // Esa señal solo la tiene quien recoge la mesa, así que se la pedimos: un toque
+  // en "Liberar mesa". No es un estado que haya que mantener al día (eso se pudre
+  // en una semana), es una fecha: la mesa está recogida si su última cuenta se
+  // cerró ANTES de este freed_at. Si al mozo se le olvida, el siguiente pedido y
+  // el cierre del día la dejan sana igual.
+  (db) => {
+    addColumn(db, "tables", "freed_at", "TEXT NOT NULL DEFAULT ''");
+  },
 ];
 
 function migrate(db: Database.Database) {
