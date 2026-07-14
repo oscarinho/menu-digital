@@ -345,14 +345,34 @@ function seed(db: Database.Database) {
   });
 }
 
+// Dónde viven la base y las fotos. En el VPS el volumen puede estar montado en
+// otro sitio, y los tests necesitan un directorio de usar y tirar: por eso es una
+// variable de entorno y no una ruta cableada.
+function dataDir(): string {
+  return process.env.VECTARYX_DATA_DIR || path.join(process.cwd(), "data");
+}
+
+/**
+ * Abre la base en `file`, la migra al día y la devuelve lista para usar.
+ *
+ * `getDb()` la llama con la base del local; los tests, con una base temporal —
+ * que es la razón de que exista: sin esto, probar el aislamiento entre locales
+ * exigía escribir en la base de desarrollo.
+ *
+ * No siembra nada: el local de ejemplo es cosa de `getDb()`.
+ */
+export function openDb(file: string): Database.Database {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const db = new Database(file);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+  migrate(db);
+  return db;
+}
+
 export function getDb(): Database.Database {
   if (!globalForDb._menuDb) {
-    const dir = path.join(process.cwd(), "data");
-    fs.mkdirSync(dir, { recursive: true });
-    const db = new Database(path.join(dir, "menu.db"));
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
-    migrate(db);
+    const db = openDb(path.join(dataDir(), "menu.db"));
     seed(db);
     globalForDb._menuDb = db;
   }
@@ -360,7 +380,7 @@ export function getDb(): Database.Database {
 }
 
 export function uploadsDir(): string {
-  const dir = path.join(process.cwd(), "data", "uploads");
+  const dir = path.join(dataDir(), "uploads");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

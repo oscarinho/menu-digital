@@ -1,43 +1,26 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import type { Order, OrderItem, OrderStatus, Restaurant } from "@/lib/types";
+import {
+  ErrorDePedido,
+  buscarPedido,
+  cambiarEstado,
+  informarPago,
+  registrarCobro,
+  verPedido,
+} from "@/domain/pedidos";
+import type { OrderStatus } from "@/lib/types";
 
-const VALID_STATUSES: OrderStatus[] = [
-  "pending",
-  "preparing",
-  "ready",
-  "delivered",
-  "cancelled",
-];
-
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = getDb();
-
-  const order = db
-    .prepare(
-      `SELECT o.*, t.code AS table_code, t.label AS table_label
-       FROM orders o JOIN tables t ON t.id = o.table_id
-       WHERE o.id = ?`
-    )
-    .get(id) as (Order & { table_code: string; table_label: string }) | undefined;
-  if (!order) {
+  const found = verPedido(getDb(), id);
+  if (!found) {
     return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
   }
-
-  const items = db
-    .prepare("SELECT * FROM order_items WHERE order_id = ?")
-    .all(id) as OrderItem[];
-  const restaurant = db
-    .prepare("SELECT * FROM restaurants WHERE id = ?")
-    .get(order.restaurant_id) as Restaurant;
+  const { order, restaurant } = found;
 
   return NextResponse.json({
-    order: { ...order, items },
+    order,
     currency: restaurant.currency,
     restaurantName: restaurant.name,
     restaurantSlug: restaurant.slug,
@@ -57,10 +40,7 @@ export async function GET(
   });
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = (await req.json()) as {
     status?: OrderStatus;
@@ -69,24 +49,15 @@ export async function PATCH(
   };
   const db = getDb();
 
-  const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(id) as
-    | Order
-    | undefined;
+  const order = buscarPedido(db, id);
   if (!order) {
     return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
   }
 
-  // Acción pública (cliente): "ya pagué con Yape/Plin" → queda por confirmar
-  // en caja. Solo transición unpaid → claimed, nada más.
+  // Acción pública (cliente): "ya pagué con Yape/Plin" → queda por confirmar en
+  // caja. Es lo único que puede hacer alguien sin PIN.
   if (body.claimPayment) {
-    if (order.payment_status === "unpaid") {
-      db.prepare(
-        `UPDATE orders SET payment_status = 'claimed',
-         updated_at = datetime('now') WHERE id = ?`
-      ).run(id);
-    }
-    const updated = db.prepare("SELECT * FROM orders WHERE id = ?").get(id);
-    return NextResponse.json({ order: updated });
+    return NextResponse.json({ order: informarPago(db, id) });
   }
 
   // Acciones de staff: cambiar estado (cocina) y confirmar cobro (caja).
@@ -94,22 +65,15 @@ export async function PATCH(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  if (body.status) {
-    if (!VALID_STATUSES.includes(body.status)) {
-      return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+  try {
+    if (body.status) cambiarEstado(db, id, body.status);
+    if (body.paymentMethod) registrarCobro(db, id, body.paymentMethod);
+  } catch (e) {
+    if (e instanceof ErrorDePedido) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
     }
-    db.prepare(
-      "UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?"
-    ).run(body.status, id);
+    throw e;
   }
 
-  if (body.paymentMethod) {
-    db.prepare(
-      `UPDATE orders SET payment_status = 'paid', payment_method = ?,
-       updated_at = datetime('now') WHERE id = ?`
-    ).run(String(body.paymentMethod), id);
-  }
-
-  const updated = db.prepare("SELECT * FROM orders WHERE id = ?").get(id);
-  return NextResponse.json({ order: updated });
+  return NextResponse.json({ order: buscarPedido(db, id) });
 }

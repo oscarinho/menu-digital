@@ -221,24 +221,51 @@ no se diseñan hoy (se diseñarían mal).
 
 ## 7 · Roadmap
 
-### Fase 1 — Producto, no demo _(lo próximo a programar)_
+### Fase 1 — Producto, no demo _(en ejecución)_
 
-1. **Separar la demo del producto.** `/` pasa a ser la portada de Vectaryx (qué
-   es, para quién, "ver demo", contacto). El índice actual con los dos locales
-   y los PINes publicados se muda a `/demo`. `GUIA_PRUEBAS.md` cambia una URL.
-2. **Modos de servicio** (migración 5 + los cambios de pantalla de §3).
-3. **Pedido de mostrador**: QR único del local → carta sin mesa → pedido con
-   nombre opcional.
-4. **Avisos nivel 1 y 2**: la página que vibra/suena + `/despacho/[slug]` para
-   la TV del local.
-5. **Llamar al mozo** (modo salón; migración 8; el aviso aparece en salón y caja).
-6. **Tests de lo que no puede romperse**: aislamiento multitenant, día de
-   negocio por zona horaria, roles, y los nuevos modos. (Deuda ya señalada; si
-   entramos a mover el esquema sin esto, es ruleta.)
+Es demasiada para una sentada, así que va en cuatro tramos. Cada uno **se puede
+desplegar solo** y deja la app funcionando; ninguno depende de que el siguiente
+llegue.
 
-**Criterio de cierre**: una juguería sin un solo mozo puede operar el día
-completo — el cliente pide del QR del mostrador, la cocina prepara, la TV canta
-el número, la caja cuadra — sin que nadie de Vectaryx toque nada.
+Los tests van **primero**, no al final. La Fase 1 mueve el esquema (`table_id`
+deja de ser obligatorio) y toca las tres pantallas que un local usa en vivo. Sin
+una red que avise cuando algo se rompe, cada tramo siguiente se prueba a mano y
+a ciegas — y lo que se rompe en silencio en un sistema multitenant es lo peor
+que puede pasar: que un local vea los pedidos de otro.
+
+**1A · La red de seguridad** ✅ _(hecho — sin cambios visibles)_
+- 25 tests de lo que no puede romperse nunca: aislamiento entre locales, el día
+  de negocio por zona horaria, el flujo del pedido de la mesa a la caja.
+  `npm test` (runner de Node, sin framework) · `npm run check` lo corre todo.
+- `openDb(ruta)` + `VECTARYX_DATA_DIR`: los tests abren una base temporal real y
+  le pasan las migraciones de producción, sin tocar la de desarrollo.
+- `src/domain/pedidos.ts`: la lógica sale de las rutas API, que quedan en
+  validar → llamar al dominio → responder. Sin esto los tests probarían una copia
+  del SQL en vez del código que corre de verdad.
+- Comprobado que la red **atrapa**: al quitar el filtro de tenant de la consulta
+  de platos, el test de aislamiento falla. Un test que nunca falla no protege nada.
+
+**1B · Modos de servicio** _(migración 5)_
+- `restaurants.service_mode` = `despacho` | `salon` | `mixto`; `orders.origin` y
+  `orders.delivery`; `table_id` pasa a nullable.
+- Admin elige el modo. Las pantallas que no aplican dejan de aparecer.
+- Caja agrupa por número de pedido cuando no hay mesa.
+
+**1C · Despacho: el local sin mozos** _(el corazón de la fase)_
+- Pedido de mostrador: QR único del local → carta sin mesa → nombre opcional.
+- `/despacho/[slug]`: pantalla pública para la TV, números gigantes,
+  **Preparando** / **LISTO**.
+- Avisos nivel 1: la pantalla del cliente vibra, suena y cambia el título al
+  pasar a Listo.
+
+**1D · Producto, no demo**
+- `/` pasa a ser la portada de Vectaryx; el índice de la demo se muda a `/demo`.
+- README y `docs/` dejan de describir "la demo" y describen el producto.
+- **Llamar al mozo** (modo salón; migración 8).
+
+**Criterio de cierre de la Fase 1**: una juguería sin un solo mozo puede operar
+el día completo — el cliente pide del QR del mostrador, la cocina prepara, la TV
+canta el número, la caja cuadra — sin que nadie de Vectaryx toque nada.
 
 ### Fase 2 — La operación del dueño
 
