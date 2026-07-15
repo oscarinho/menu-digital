@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import LangSwitch from "@/components/LangSwitch";
-import { IconAdmin, IconCaja, IconCocina, IconSalon } from "@/components/icons";
+import { IconAdmin, IconCaja, IconCarta, IconCocina, IconSalon, IconSonido } from "@/components/icons";
 import { brandVars, contrastOn, initialsOf, DEFAULT_BRAND } from "@/lib/brand";
 import { fmt, useT } from "@/lib/i18n";
 import type { PublicRestaurant, Table } from "@/lib/types";
@@ -21,6 +21,7 @@ const PANTALLAS = [
   { key: "cocina", Icon: IconCocina, admin: false },
   { key: "caja", Icon: IconCaja, admin: false },
   { key: "salon", Icon: IconSalon, admin: false },
+  { key: "despacho", Icon: IconSonido, admin: false },
   { key: "admin", Icon: IconAdmin, admin: true },
 ] as const;
 
@@ -71,14 +72,18 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
   const r = data.restaurant;
   const brand = r.brand_color || DEFAULT_BRAND;
   const sobreMarca = contrastOn(brand);
-  // En despacho no hay salón: sin mesas ni mozos, esa pantalla no tiene qué mostrar.
-  const pantallas = PANTALLAS.filter(
-    (p) => !(p.key === "salon" && r.service_mode === "despacho")
-  );
+  // El salón desaparece en despacho (sin mesas ni mozos); la pantalla de despacho
+  // aparece salvo en salón puro, donde no hace falta cantar números.
+  const pantallas = PANTALLAS.filter((p) => {
+    if (p.key === "salon") return r.service_mode !== "despacho";
+    if (p.key === "despacho") return r.service_mode !== "salon";
+    return true;
+  });
   const hints: Record<string, string> = {
     cocina: t.hub.cocinaHint,
     caja: t.hub.cajaHint,
     salon: t.hub.salonHint,
+    despacho: t.hub.despachoHint,
     admin: t.hub.adminHint,
   };
 
@@ -196,6 +201,40 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
               </Link>
             ))}
           </div>
+
+          {/* En despacho/mixto, el QR único del mostrador: el pedido para llevar sin mesa. */}
+          {r.service_mode !== "salon" && (
+            <Link
+              href={`/r/${slug}/mostrador`}
+              className="mt-3 flex items-center gap-3 p-3.5 transition hover:-translate-y-0.5"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border-2)",
+                borderRadius: 14,
+              }}
+            >
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center"
+                style={{ borderRadius: 11, background: `${brand}14`, color: brand }}
+              >
+                <IconCarta size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-extrabold" style={{ color: "var(--text)" }}>
+                  {t.hub.counterLink}
+                </span>
+                <span
+                  className="block text-[12px] font-semibold"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  {t.hub.counterHint}
+                </span>
+              </span>
+              <span className="text-lg" style={{ color: "var(--text-faint)" }} aria-hidden>
+                →
+              </span>
+            </Link>
+          )}
         </div>
 
         {/* Lo que convierte esto en una app y no en una web: que el navegador

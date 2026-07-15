@@ -128,6 +128,11 @@ export interface Order {
   total_cents: number;
   origin: OrderOrigin;
   delivery: OrderDelivery;
+  // Nombre que dejó el cliente de mostrador ('' si no dejó, o si es pedido de mesa).
+  customer_name: string;
+  // Cuándo cruzó a listo / entregado ('' = todavía no). Se marca una sola vez.
+  ready_at: string;
+  delivered_at: string;
   created_at: string;
   updated_at: string;
 }

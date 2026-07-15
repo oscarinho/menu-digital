@@ -14,9 +14,11 @@ import {
 
 interface CreateOrderBody {
   restaurantSlug: string;
-  tableCode: string;
+  // Ausente en el pedido de mostrador: ese QR no trae mesa.
+  tableCode?: string;
   paymentMethod?: string;
   notes?: string;
+  customerName?: string;
   items: LineaPedida[];
 }
 
@@ -34,13 +36,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Restaurante no encontrado" }, { status: 404 });
   }
 
-  const table = buscarMesa(db, restaurant.id, body.tableCode);
-  if (!table) {
-    return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
+  // Con código de mesa es un pedido de salón; sin él, uno de mostrador. Un local en
+  // modo 'salon' no recibe pedidos sin mesa: su QR siempre trae una.
+  let table = null;
+  if (body.tableCode) {
+    table = buscarMesa(db, restaurant.id, body.tableCode);
+    if (!table) {
+      return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
+    }
+  } else if (restaurant.service_mode === "salon") {
+    return NextResponse.json(
+      { error: "Este local solo recibe pedidos desde la mesa" },
+      { status: 400 }
+    );
   }
 
   const limit = rateLimit(
-    `order:${clientIp(req)}:${restaurant.id}:${table.id}`,
+    `order:${clientIp(req)}:${restaurant.id}:${table ? table.id : "mostrador"}`,
     MAX_ORDERS,
     WINDOW_MS
   );
@@ -56,6 +68,7 @@ export async function POST(req: Request) {
       items: body.items,
       notes: body.notes,
       paymentMethod: body.paymentMethod,
+      customerName: body.customerName,
     });
     return NextResponse.json(pedido, { status: 201 });
   } catch (e) {

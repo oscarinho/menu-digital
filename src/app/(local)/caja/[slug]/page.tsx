@@ -194,7 +194,7 @@ function CajaBoard({ slug }: { slug: string }) {
                         fontFamily: "var(--font-display), system-ui, sans-serif",
                       }}
                     >
-                      {o.table_label}
+                      {o.table_label || o.customer_name || `#${o.daily_number}`}
                     </p>
                     <p
                       className="mt-0.5 text-[12.5px] font-semibold"
@@ -331,7 +331,7 @@ function CajaBoard({ slug }: { slug: string }) {
                       fontFamily: "var(--font-display), system-ui, sans-serif",
                     }}
                   >
-                    {o.table_label}
+                    {o.table_label || o.customer_name || `#${o.daily_number}`}
                   </span>
                   <span
                     className="text-[12.5px] font-semibold tabular-nums"

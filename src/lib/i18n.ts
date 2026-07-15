@@ -21,6 +21,7 @@ export type Surface =
   | "hub"
   | "menu"
   | "track"
+  | "despacho"
   | "cocina"
   | "caja"
   | "salon"
@@ -100,7 +101,7 @@ export function payLabel(t: Dict, id: string): string {
 }
 
 export interface Dict {
-  nav: Record<"cocina" | "caja" | "salon" | "admin", string>;
+  nav: Record<"cocina" | "caja" | "salon" | "admin" | "despacho", string>;
   common: { loading: string; offline: string; min: string; table: string };
   status: Record<OrderStatus, string>;
   hint: Record<OrderStatus, string>;
@@ -158,7 +159,10 @@ export interface Dict {
     cajaHint: string;
     salonHint: string;
     adminHint: string;
+    despachoHint: string;
     dinerHint: string;
+    counterLink: string;
+    counterHint: string;
     seeMenu: string;
     installTitle: string;
     installText: string;
@@ -191,6 +195,9 @@ export interface Dict {
     add: string;
     viewOrder: string;
     yourOrder: string;
+    counterBadge: string;
+    counterName: string;
+    counterNamePh: string;
     notes: string;
     notesPh: string;
     howPay: string;
@@ -229,6 +236,13 @@ export interface Dict {
     total: string;
     orderMore: string;
     autoRefresh: string;
+    readyTitle: string;
+    readyTab: string;
+  };
+  despacho: {
+    preparing: string;
+    ready: string;
+    empty: string;
   };
   kitchen: {
     cols: Record<"pending" | "preparing" | "ready", string>;
@@ -342,7 +356,12 @@ export interface Dict {
 }
 
 const es: Dict = {
-  nav: { cocina: "Cocina", caja: "Caja", salon: "Salón", admin: "Administración" },
+  despacho: {
+    preparing: "En preparación",
+    ready: "Listo — recoger",
+    empty: "Sin pedidos por ahora.",
+  },
+  nav: { cocina: "Cocina", caja: "Caja", salon: "Salón", admin: "Administración", despacho: "Despacho" },
   common: { loading: "Cargando…", offline: "Sin conexión", min: "min", table: "Mesa {n}" },
   status: {
     pending: "Recibido",
@@ -414,7 +433,10 @@ const es: Dict = {
     cajaHint: "Cobros y cuentas del día",
     salonHint: "Las mesas del local",
     adminHint: "Carta, marca, mesas y cobros",
+    despachoHint: "La pantalla de números para la TV del mostrador.",
     dinerHint: "Lo que ve quien escanea el QR de una mesa.",
+    counterLink: "Pedir en el mostrador",
+    counterHint: "El QR único del local, sin mesa.",
     seeMenu: "Ver la carta",
     installTitle: "Instálalo en la tablet",
     installText:
@@ -452,6 +474,9 @@ const es: Dict = {
     add: "Agregar",
     viewOrder: "Ver pedido",
     yourOrder: "Tu pedido",
+    counterBadge: "Para recoger",
+    counterName: "¿A nombre de quién?",
+    counterNamePh: "Tu nombre (para llamarte)",
     notes: "Notas para cocina",
     notesPh: "Ej: sin cebolla, término de cocción…",
     howPay: "¿Cómo pagas?",
@@ -490,6 +515,8 @@ const es: Dict = {
     total: "Total",
     orderMore: "Pedir algo más",
     autoRefresh: "Esta página se actualiza sola cada pocos segundos.",
+    readyTitle: "¡Tu pedido está listo!",
+    readyTab: "🔔 ¡Listo!",
   },
   kitchen: {
     cols: { pending: "Recibido", preparing: "En preparación", ready: "Listo" },
@@ -628,7 +655,12 @@ const es: Dict = {
 };
 
 const en: Dict = {
-  nav: { cocina: "Kitchen", caja: "Cashier", salon: "Floor", admin: "Admin" },
+  despacho: {
+    preparing: "Being prepared",
+    ready: "Ready — pick up",
+    empty: "No orders right now.",
+  },
+  nav: { cocina: "Kitchen", caja: "Cashier", salon: "Floor", admin: "Admin", despacho: "Pickup board" },
   common: { loading: "Loading…", offline: "Offline", min: "min", table: "Table {n}" },
   status: {
     pending: "Received",
@@ -700,7 +732,10 @@ const en: Dict = {
     cajaHint: "Payments and today's takings",
     salonHint: "The tables in the room",
     adminHint: "Menu, brand, tables and payments",
+    despachoHint: "The number board for the counter TV.",
     dinerHint: "What someone scanning a table's QR sees.",
+    counterLink: "Order at the counter",
+    counterHint: "The venue's single QR, no table.",
     seeMenu: "See the menu",
     installTitle: "Install it on the tablet",
     installText:
@@ -737,6 +772,9 @@ const en: Dict = {
     add: "Add",
     viewOrder: "View order",
     yourOrder: "Your order",
+    counterBadge: "For pickup",
+    counterName: "Under what name?",
+    counterNamePh: "Your name (so we can call you)",
     notes: "Notes for the kitchen",
     notesPh: "e.g. no onion, medium rare…",
     howPay: "How are you paying?",
@@ -775,6 +813,8 @@ const en: Dict = {
     total: "Total",
     orderMore: "Order something else",
     autoRefresh: "This page refreshes itself every few seconds.",
+    readyTitle: "Your order is ready!",
+    readyTab: "🔔 Ready!",
   },
   kitchen: {
     cols: { pending: "Received", preparing: "Cooking", ready: "Ready" },
@@ -913,7 +953,12 @@ const en: Dict = {
 };
 
 const zh: Dict = {
-  nav: { cocina: "后厨", caja: "收银", salon: "餐厅大堂", admin: "管理后台" },
+  despacho: {
+    preparing: "制作中",
+    ready: "可自取",
+    empty: "暂无订单。",
+  },
+  nav: { cocina: "后厨", caja: "收银", salon: "餐厅大堂", admin: "管理后台", despacho: "取餐屏" },
   common: { loading: "加载中…", offline: "已断线", min: "分钟", table: "{n} 号桌" },
   status: {
     pending: "已接单",
@@ -985,7 +1030,10 @@ const zh: Dict = {
     cajaHint: "收款与当日账目",
     salonHint: "店内的餐桌",
     adminHint: "菜单、品牌、餐桌与收款",
+    despachoHint: "柜台电视上的取餐叫号屏。",
     dinerHint: "扫描餐桌二维码的人看到的画面。",
+    counterLink: "在柜台点餐",
+    counterHint: "店铺的唯一二维码，无需餐桌。",
     seeMenu: "查看菜单",
     installTitle: "装到平板上",
     installText: "把这个页面添加到主屏幕，它就会独立全屏打开，看不到浏览器地址栏。",
@@ -1019,6 +1067,9 @@ const zh: Dict = {
     add: "加入",
     viewOrder: "查看订单",
     yourOrder: "您的订单",
+    counterBadge: "自取",
+    counterName: "用什么名字？",
+    counterNamePh: "您的名字（方便叫号）",
     notes: "给后厨的备注",
     notesPh: "例如：不要洋葱、几分熟…",
     howPay: "如何付款？",
@@ -1057,6 +1108,8 @@ const zh: Dict = {
     total: "合计",
     orderMore: "再点一些",
     autoRefresh: "本页面每隔几秒自动刷新。",
+    readyTitle: "您的订单已做好！",
+    readyTab: "🔔 已做好！",
   },
   kitchen: {
     cols: { pending: "已接单", preparing: "制作中", ready: "已做好" },

@@ -53,6 +53,8 @@ export interface NuevoPedido {
   items: LineaPedida[];
   notes?: string;
   paymentMethod?: string;
+  /** Nombre con el que se llama al cliente de mostrador. Se ignora en pedidos de mesa. */
+  customerName?: string;
 }
 
 export function buscarLocal(db: Database.Database, slug: string): Restaurant | undefined {
@@ -140,8 +142,8 @@ export function crearPedido(
     const delivery = table ? "mozo" : "recojo";
 
     db.prepare(
-      `INSERT INTO orders (id, restaurant_id, table_id, daily_number, status, notes, payment_method, total_cents, origin, delivery)
-       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`
+      `INSERT INTO orders (id, restaurant_id, table_id, daily_number, status, notes, payment_method, total_cents, origin, delivery, customer_name)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`
     ).run(
       orderId,
       restaurant.id,
@@ -151,7 +153,9 @@ export function crearPedido(
       String(entrada.paymentMethod ?? ""),
       total,
       origin,
-      delivery
+      delivery,
+      // El nombre solo tiene sentido sin mesa: la mesa ya nombra al pedido de salón.
+      table ? "" : String(entrada.customerName ?? "").trim().slice(0, 60)
     );
 
     const insertLine = db.prepare(
@@ -249,6 +253,31 @@ export function listarPedidos(
   };
 }
 
+export interface LineaDespacho {
+  daily_number: number;
+  status: OrderStatus;
+  customer_name: string;
+}
+
+/**
+ * Lo que canta la pantalla de despacho (la TV del local): solo los pedidos en
+ * preparación o listos del día, y de cada uno solo el número, el estado y el nombre.
+ *
+ * Nada de platos, precios ni mesas: esta pantalla es PÚBLICA, sin PIN, colgada a la
+ * vista de toda la calle. Lo único que se puede leer ahí es "el #12 ya está listo".
+ */
+export function listarDespacho(db: Database.Database, restaurant: Restaurant): LineaDespacho[] {
+  const day = businessDayRange(restaurant.timezone);
+  return db
+    .prepare(
+      `SELECT daily_number, status, customer_name FROM orders
+       WHERE restaurant_id = ? AND status IN ('preparing','ready')
+         AND created_at >= ? AND created_at < ?
+       ORDER BY ready_at = '' DESC, daily_number ASC`
+    )
+    .all(restaurant.id, day.start, day.end) as LineaDespacho[];
+}
+
 /** El pedido que sigue el comensal desde su celular, con el local que lo cocina. */
 export function verPedido(
   db: Database.Database,
@@ -302,10 +331,18 @@ export function cambiarEstado(
   if (!ESTADOS_VALIDOS.includes(status)) {
     throw new ErrorDePedido(400, "Estado inválido");
   }
-  db.prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?").run(
-    status,
-    id
-  );
+  // La hora del cruce se sella una sola vez. Si el pedido vuelve a 'ready' por un toque
+  // repetido, no se pisa el primer instante: los tiempos de cocina mentirían si cada
+  // clic reiniciara el reloj.
+  const sello =
+    status === "ready"
+      ? ", ready_at = CASE WHEN ready_at = '' THEN datetime('now') ELSE ready_at END"
+      : status === "delivered"
+        ? ", delivered_at = CASE WHEN delivered_at = '' THEN datetime('now') ELSE delivered_at END"
+        : "";
+  db.prepare(
+    `UPDATE orders SET status = ?, updated_at = datetime('now')${sello} WHERE id = ?`
+  ).run(status, id);
   return buscarPedido(db, id);
 }
 

@@ -265,12 +265,20 @@ que puede pasar: que un local vea los pedidos de otro.
 _Pendiente que se movió a 1C:_ crear el pedido de mostrador (QR único, nombre opcional) y
 que la caja lo agrupe por número — necesita la pantalla de despacho, que es de 1C.
 
-**1C · Despacho: el local sin mozos** _(el corazón de la fase)_
-- Pedido de mostrador: QR único del local → carta sin mesa → nombre opcional.
-- `/despacho/[slug]`: pantalla pública para la TV, números gigantes,
-  **Preparando** / **LISTO**.
-- Avisos nivel 1: la pantalla del cliente vibra, suena y cambia el título al
-  pasar a Listo.
+**1C · Despacho: el local sin mozos** ✅ _(el corazón de la fase — migraciones 6 y 7)_
+- Pedido de mostrador: QR único (`/r/[slug]/mostrador`) → la misma carta, sin mesa,
+  con un nombre opcional. La carta se extrajo a `components/Carta.tsx` y las dos rutas
+  (mesa y mostrador) son envoltorios de dos líneas: cero código duplicado.
+- `/despacho/[slug]`: pantalla **pública** (sin PIN, solo números y nombres) para la TV,
+  dos columnas **LISTO** / **Preparando**, cifras gigantes. Endpoint aparte que no
+  devuelve platos, precios ni mesas.
+- Avisos nivel 1: al pasar a Listo, la página del cliente **vibra**, suena un beep
+  (WebAudio, sin archivo) y cambia el título de la pestaña ("🔔 ¡Listo!"), más un banner.
+- Migración 6 (`ready_at`/`delivered_at`, sellados una sola vez al cruzar el estado) y 7
+  (`customer_name`). La caja muestra "#N" o el nombre cuando no hay mesa; la puerta del
+  local enseña la tarjeta de Despacho y el enlace al mostrador según el modo.
+- 3 tests nuevos (nombre solo en mostrador, sello de tiempo idempotente, qué canta la TV).
+  Migración 4→7 verificada sobre copia de la base real (4 pedidos, 0 FK rotas).
 
 **1D · Producto, no demo** ✅ _(hecho, salvo llamar al mozo)_
 

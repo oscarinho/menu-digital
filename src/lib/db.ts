@@ -211,6 +211,26 @@ const MIGRATIONS: ((db: Database.Database) => void)[] = [
       CREATE INDEX idx_orders_restaurant_created ON orders (restaurant_id, created_at);
     `);
   },
+
+  // 6 · Cuándo estuvo listo y cuándo se entregó cada pedido.
+  //
+  // Hasta ahora solo se guardaba `updated_at`: el último toque, sin memoria. No
+  // alcanza para "lleva 12 min esperando" honesto ni para el reporte de tiempos de
+  // cocina de la Fase 2. Se marcan al cruzar el estado, una sola vez (ver dominio).
+  // '' = todavía no ha pasado.
+  (db) => {
+    addColumn(db, "orders", "ready_at", "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, "orders", "delivered_at", "TEXT NOT NULL DEFAULT ''");
+  },
+
+  // 7 · Nombre del cliente en el pedido de mostrador (opcional).
+  //
+  // Sin mesa que lo identifique, "Pedido #12 · Óscar" en la pantalla de despacho es lo
+  // que evita que dos personas se peleen por el mismo número. En salón no se usa: la
+  // mesa ya nombra el pedido.
+  (db) => {
+    addColumn(db, "orders", "customer_name", "TEXT NOT NULL DEFAULT ''");
+  },
 ];
 
 function migrate(db: Database.Database) {

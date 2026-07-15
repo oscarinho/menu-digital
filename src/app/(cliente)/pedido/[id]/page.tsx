@@ -51,7 +51,9 @@ export default function PedidoPage({
           // Cerrado el ciclo (entregado y pagado, o cancelado), la mesa deja de
           // arrastrarlo: al volver a escanear el QR se empieza de cero.
           if (!isOrderOpen(d.order)) {
-            forgetOrder(d.restaurantSlug, d.order.table_code);
+            // El pedido de mostrador no tiene mesa: se recordó bajo "mostrador", así que
+            // se olvida con la misma clave. Sin esto, quedaría colgado en el celular.
+            forgetOrder(d.restaurantSlug, d.order.table_code ?? "mostrador");
           }
         }
       } catch {
@@ -68,6 +70,48 @@ export default function PedidoPage({
     // sondeo cada vez que alguien cambia de idioma.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Aviso nivel 1: cuando el pedido pasa a "listo", la propia página avisa —vibra,
+  // suena y cambia el título de la pestaña— sin push ni permisos. Cubre al cliente que
+  // dejó la página abierta, que son casi todos. Se dispara una vez, al cruzar el estado.
+  const status = data?.order.status;
+  useEffect(() => {
+    if (status !== "ready") return;
+    try {
+      navigator.vibrate?.([200, 100, 200]);
+    } catch {
+      // Sin vibración (escritorio): el título y el banner siguen avisando.
+    }
+    const tituloPrevio = document.title;
+    document.title = t.track.readyTab;
+    let ctx: AudioContext | undefined;
+    try {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AC) {
+        ctx = new AC();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.6);
+      }
+    } catch {
+      // El navegador puede bloquear el audio sin un gesto previo: no pasa nada, es extra.
+    }
+    return () => {
+      document.title = tituloPrevio;
+      ctx?.close().catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, t.track.readyTab]);
 
   async function claimPayment() {
     if (claiming || !data) return;
@@ -161,13 +205,35 @@ export default function PedidoPage({
               className="text-[13px] font-semibold"
               style={{ color: "var(--text-faint)" }}
             >
-              {fmt(t.track.orderNo, { n: order.daily_number })} · {order.table_label}
+              {fmt(t.track.orderNo, { n: order.daily_number })}
+              {order.table_label
+                ? ` · ${order.table_label}`
+                : order.customer_name
+                  ? ` · ${order.customer_name}`
+                  : ""}
             </p>
           </div>
           <div className="ml-auto">
             <LangSwitch lang={lang} onChange={setLang} />
           </div>
         </header>
+
+        {order.status === "ready" && !cancelled && (
+          <div
+            className="mt-5 flex items-center gap-3 p-4"
+            style={{
+              background: "var(--brand)",
+              color: "var(--brand-contrast)",
+              borderRadius: 18,
+              animation: "pop .35s ease both",
+            }}
+          >
+            <span className="text-2xl" aria-hidden>
+              🔔
+            </span>
+            <span className="text-[16px] font-extrabold">{t.track.readyTitle}</span>
+          </div>
+        )}
 
         {/* Estado actual + línea de tiempo */}
         <section className="mt-5 p-[22px]" style={CARD}>
