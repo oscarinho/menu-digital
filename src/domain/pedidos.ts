@@ -77,11 +77,14 @@ export function buscarMesa(
  * El precio se lee de la carta, nunca del cliente: el navegador manda qué platos
  * y cuántos, y el total lo hace el servidor. Si un plato no es de este local o
  * está agotado, el pedido entero se cae.
+ *
+ * `table` en null es un pedido de mostrador (origin='mostrador'): no salió de
+ * ninguna mesa y lo recoge el propio comensal cuando la cocina lo canta.
  */
 export function crearPedido(
   db: Database.Database,
   restaurant: Restaurant,
-  table: Table,
+  table: Table | null,
   entrada: NuevoPedido
 ): { id: string; dailyNumber: number; totalCents: number } {
   if (!restaurant.active) {
@@ -130,17 +133,25 @@ export function crearPedido(
       )
       .get(restaurant.id, day.start, day.end) as { n: number };
 
+    // Sin mesa es un pedido de mostrador que recoge el propio comensal; con mesa,
+    // el flujo de siempre (lo lleva el mozo). El modo del local afina esto en 1C;
+    // por ahora lo decide, sin ambigüedad, si vino o no una mesa.
+    const origin = table ? "mesa" : "mostrador";
+    const delivery = table ? "mozo" : "recojo";
+
     db.prepare(
-      `INSERT INTO orders (id, restaurant_id, table_id, daily_number, status, notes, payment_method, total_cents)
-       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)`
+      `INSERT INTO orders (id, restaurant_id, table_id, daily_number, status, notes, payment_method, total_cents, origin, delivery)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`
     ).run(
       orderId,
       restaurant.id,
-      table.id,
+      table ? table.id : null,
       n + 1,
       String(entrada.notes ?? "").slice(0, 500),
       String(entrada.paymentMethod ?? ""),
-      total
+      total,
+      origin,
+      delivery
     );
 
     const insertLine = db.prepare(
@@ -208,14 +219,16 @@ export function listarPedidos(
     args.push(day.start, day.end);
   }
 
+  // LEFT JOIN, no JOIN: el pedido de mostrador no tiene mesa, y con un JOIN normal
+  // desaparecería de la cocina y de la caja —justo los pedidos que no queremos perder.
   const orders = db
     .prepare(
       `SELECT o.*, t.code AS table_code, t.label AS table_label
-       FROM orders o JOIN tables t ON t.id = o.table_id
+       FROM orders o LEFT JOIN tables t ON t.id = o.table_id
        WHERE o.restaurant_id = ? AND ${where}
        ORDER BY o.created_at ASC`
     )
-    .all(...args) as (Order & { table_code: string; table_label: string })[];
+    .all(...args) as (Order & { table_code: string | null; table_label: string | null })[];
 
   const getItems = db.prepare("SELECT * FROM order_items WHERE order_id = ?");
   const result: OrderWithDetails[] = orders.map((o) => ({
@@ -244,10 +257,10 @@ export function verPedido(
   const order = db
     .prepare(
       `SELECT o.*, t.code AS table_code, t.label AS table_label
-       FROM orders o JOIN tables t ON t.id = o.table_id
+       FROM orders o LEFT JOIN tables t ON t.id = o.table_id
        WHERE o.id = ?`
     )
-    .get(id) as (Order & { table_code: string; table_label: string }) | undefined;
+    .get(id) as (Order & { table_code: string | null; table_label: string | null }) | undefined;
   if (!order) return undefined;
 
   const items = db

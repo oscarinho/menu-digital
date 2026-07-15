@@ -833,6 +833,48 @@ function AdminPanel({ slug }: { slug: string }) {
                   </button>
                 </section>
               </div>
+
+              <section className="mt-4 p-[18px]" style={CARD}>
+                <h3 className="text-base font-extrabold" style={{ color: "var(--text)" }}>
+                  {t.admin.serviceMode}
+                </h3>
+                <p className="mb-3.5 mt-1 text-[12.5px]" style={{ color: "var(--text-faint)" }}>
+                  {t.admin.serviceModeHint}
+                </p>
+                <div className="grid gap-2.5 sm:grid-cols-3">
+                  {(["salon", "despacho", "mixto"] as const).map((modo) => {
+                    const activo = data.restaurant.service_mode === modo;
+                    return (
+                      <button
+                        key={modo}
+                        onClick={() => saveBranding({ serviceMode: modo }, true)}
+                        className="p-3.5 text-left transition active:scale-[0.98]"
+                        style={{
+                          borderRadius: 14,
+                          background: activo ? "var(--brand)" : "var(--surface-2)",
+                          color: activo ? "var(--brand-contrast)" : "var(--text)",
+                          border: `2px solid ${activo ? "var(--brand)" : "var(--border-2)"}`,
+                        }}
+                      >
+                        <span className="block text-[15px] font-extrabold">
+                          {t.admin.modes[modo].name}
+                        </span>
+                        <span
+                          className="mt-0.5 block text-[12px] leading-snug"
+                          style={{ color: activo ? "var(--brand-contrast)" : "var(--text-faint)" }}
+                        >
+                          {t.admin.modes[modo].desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {brandSaved && (
+                  <p className="mt-3 text-[13px] font-semibold" style={{ color: "var(--brand)" }}>
+                    {t.admin.saved}
+                  </p>
+                )}
+              </section>
             </>
           )}
 

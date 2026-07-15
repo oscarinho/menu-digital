@@ -71,6 +71,10 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
   const r = data.restaurant;
   const brand = r.brand_color || DEFAULT_BRAND;
   const sobreMarca = contrastOn(brand);
+  // En despacho no hay salón: sin mesas ni mozos, esa pantalla no tiene qué mostrar.
+  const pantallas = PANTALLAS.filter(
+    (p) => !(p.key === "salon" && r.service_mode === "despacho")
+  );
   const hints: Record<string, string> = {
     cocina: t.hub.cocinaHint,
     caja: t.hub.cajaHint,
@@ -158,10 +162,10 @@ export default function Puerta({ params }: { params: Promise<{ slug: string }> }
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
         {titulo(t.hub.staffTitle)}
-        <div className="mt-3 grid gap-2.5">{PANTALLAS.filter((p) => !p.admin).map(tarjeta)}</div>
+        <div className="mt-3 grid gap-2.5">{pantallas.filter((p) => !p.admin).map(tarjeta)}</div>
 
         {titulo(t.hub.ownerTitle)}
-        <div className="mt-3 grid gap-2.5">{PANTALLAS.filter((p) => p.admin).map(tarjeta)}</div>
+        <div className="mt-3 grid gap-2.5">{pantallas.filter((p) => p.admin).map(tarjeta)}</div>
 
         {titulo(t.hub.dinerTitle)}
         <div

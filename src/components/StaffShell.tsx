@@ -6,6 +6,7 @@ import LangSwitch from "@/components/LangSwitch";
 import { IconAdmin, IconCaja, IconCocina, IconSalon } from "@/components/icons";
 import { brandVars, contrastOn, initialsOf, DEFAULT_BRAND } from "@/lib/brand";
 import type { Dict, Lang } from "@/lib/i18n";
+import type { ServiceMode } from "@/lib/types";
 
 // La cabecera de todas las pantallas del local.
 //
@@ -31,6 +32,8 @@ export interface Marca {
   name: string;
   logo?: string;
   brandColor?: string;
+  // Cuando es 'despacho', la barra no muestra la pestaña de Salón.
+  serviceMode?: ServiceMode;
 }
 
 export default function StaffShell({
@@ -60,6 +63,10 @@ export default function StaffShell({
 }) {
   const dark = tone === "dark";
   const brand = restaurant?.brandColor || DEFAULT_BRAND;
+  // En despacho no hay salón; la pestaña desaparece de la barra igual que en la puerta.
+  const pantallas = PANTALLAS.filter(
+    (p) => !(p.key === "salon" && restaurant?.serviceMode === "despacho")
+  );
 
   const c = dark
     ? {
@@ -128,7 +135,7 @@ export default function StaffShell({
           className="order-3 flex w-full items-center gap-1 sm:order-none sm:w-auto"
           style={{ borderRadius: 999, background: c.chip, padding: 3 }}
         >
-          {PANTALLAS.map(({ key, Icon }) => {
+          {pantallas.map(({ key, Icon }) => {
             const on = key === surface;
             return (
               <Link

@@ -245,11 +245,25 @@ que puede pasar: que un local vea los pedidos de otro.
 - Comprobado que la red **atrapa**: al quitar el filtro de tenant de la consulta
   de platos, el test de aislamiento falla. Un test que nunca falla no protege nada.
 
-**1B · Modos de servicio** _(migración 5)_
+**1B · Modos de servicio** ✅ _(migración 5)_
 - `restaurants.service_mode` = `despacho` | `salon` | `mixto`; `orders.origin` y
-  `orders.delivery`; `table_id` pasa a nullable.
-- Admin elige el modo. Las pantallas que no aplican dejan de aparecer.
-- Caja agrupa por número de pedido cuando no hay mesa.
+  `orders.delivery`; `table_id` pasa a nullable. `service_mode` viaja en la respuesta
+  pública del local (no es dato sensible: es cómo trabaja).
+- El dominio quedó listo para el mostrador **antes** que la UI que lo crea: `crearPedido`
+  acepta `table = null` (origin `mostrador`, delivery `recojo`) y las consultas de
+  cocina/caja/seguimiento pasaron a **LEFT JOIN** contra `tables` —con un JOIN normal el
+  pedido sin mesa se caía de la cocina y de la caja. 4 tests nuevos lo fijan.
+- Admin elige el modo (pestaña Marca). En `despacho` la pantalla de Salón desaparece de
+  la puerta del local y de la barra del personal.
+- **Migración con hijos, aprendido a golpes:** recrear `orders` (para soltar el `NOT NULL`
+  de `table_id`) con las claves foráneas activas rompe: `DROP TABLE` dispara un borrado
+  implícito que viola la referencia de `order_items`. Reproducido contra la copia de la
+  base de desarrollo (v4, 4 pedidos) — habría tumbado la demo al desplegar. `migrate()`
+  ahora apaga las FK mientras migra y las reactiva con un `foreign_key_check` que confirma
+  que no quedó nada colgando; sirve para toda recreación de tabla futura.
+
+_Pendiente que se movió a 1C:_ crear el pedido de mostrador (QR único, nombre opcional) y
+que la caja lo agrupe por número — necesita la pantalla de despacho, que es de 1C.
 
 **1C · Despacho: el local sin mozos** _(el corazón de la fase)_
 - Pedido de mostrador: QR único del local → carta sin mesa → nombre opcional.

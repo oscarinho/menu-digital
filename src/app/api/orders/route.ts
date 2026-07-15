@@ -95,6 +95,8 @@ export async function GET(req: Request) {
       name: restaurant.name,
       logo: restaurant.logo,
       brandColor: restaurant.brand_color,
+      // La barra del local esconde la pestaña de Salón cuando el modo es despacho.
+      serviceMode: restaurant.service_mode,
     },
     tables,
   });

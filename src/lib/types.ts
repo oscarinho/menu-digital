@@ -19,6 +19,19 @@ export const ORDER_FLOW: OrderStatus[] = [
 
 export type StaffRole = "staff" | "admin";
 
+// Cómo trabaja el local, y qué pantallas usa:
+//   'despacho' — sin mesas ni mozos; se pide en el mostrador o del QR único y se
+//                recoge cuando la cocina canta el número. No hay salón.
+//   'salon'    — lo de siempre: QR por mesa, mozos, liberar mesa.
+//   'mixto'    — mesas con QR y además pedido de mostrador para llevar.
+export type ServiceMode = "despacho" | "salon" | "mixto";
+
+// De dónde nació el pedido. 'mesa' exige table_id; 'mostrador' lo deja en null.
+export type OrderOrigin = "mesa" | "mostrador";
+
+// Quién mueve el plato hasta el comensal.
+export type OrderDelivery = "mozo" | "recojo";
+
 export interface Restaurant {
   id: string;
   slug: string;
@@ -27,6 +40,9 @@ export interface Restaurant {
   country: string;
   // Zona IANA del local: define qué es "hoy" (número diario de pedido, métricas).
   timezone: string;
+  // Modo de servicio: decide qué pantallas ve el local y si el pedido nace de una
+  // mesa o del mostrador. Ver ServiceMode.
+  service_mode: ServiceMode;
   phone: string;
   address: string;
   yape_number: string;
@@ -61,6 +77,9 @@ export type PublicRestaurant = Pick<
   | "logo"
   | "cover_image"
   | "brand_color"
+  // No es un dato sensible: es cómo trabaja el local, y las pantallas del cliente y
+  // la puerta lo necesitan para saber qué mostrar (mesa vs. mostrador, salón o no).
+  | "service_mode"
   | "active"
 >;
 
@@ -99,13 +118,16 @@ export interface MenuItem {
 export interface Order {
   id: string;
   restaurant_id: string;
-  table_id: string;
+  // null en un pedido de mostrador (origin='mostrador'): no salió de ninguna mesa.
+  table_id: string | null;
   daily_number: number;
   status: OrderStatus;
   notes: string;
   payment_method: string;
   payment_status: PaymentStatus;
   total_cents: number;
+  origin: OrderOrigin;
+  delivery: OrderDelivery;
   created_at: string;
   updated_at: string;
 }
@@ -121,7 +143,9 @@ export interface OrderItem {
 }
 
 export interface OrderWithDetails extends Order {
-  table_code: string;
-  table_label: string;
+  // null cuando el pedido es de mostrador: no hay mesa que nombrar. Las pantallas
+  // muestran entonces el número de pedido ("Pedido #12") en vez de "Mesa 4".
+  table_code: string | null;
+  table_label: string | null;
   items: OrderItem[];
 }

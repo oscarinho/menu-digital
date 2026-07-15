@@ -167,6 +167,50 @@ const MIGRATIONS: ((db: Database.Database) => void)[] = [
   (db) => {
     addColumn(db, "tables", "freed_at", "TEXT NOT NULL DEFAULT ''");
   },
+
+  // 5 · Modo de servicio del local y de dónde nace cada pedido.
+  //
+  // Hoy todo pedido sale de una mesa: `orders.table_id NOT NULL`. Eso deja fuera al
+  // menú que atiende por mostrador y a la juguería donde recoges cuando te llaman.
+  // A partir de aquí el local declara cómo trabaja (`service_mode`) y el pedido
+  // declara de dónde vino (`origin`) y quién mueve el plato (`delivery`).
+  //
+  // 'salon' es el valor por defecto en todo: los locales ya sembrados siguen
+  // exactamente como estaban, con sus pedidos de mesa entregados por mozo.
+  //
+  // `table_id` pasa a poder ser NULL (pedido de mostrador). Como SQLite no quita un
+  // NOT NULL con ALTER, se recrea la tabla —igual que en la 3— y de paso entran las
+  // dos columnas nuevas con su valor histórico para los pedidos que ya existían.
+  (db) => {
+    addColumn(db, "restaurants", "service_mode", "TEXT NOT NULL DEFAULT 'salon'");
+    db.exec(`
+      CREATE TABLE orders_v5 (
+        id TEXT PRIMARY KEY,
+        restaurant_id TEXT NOT NULL REFERENCES restaurants(id),
+        table_id TEXT REFERENCES tables(id),
+        daily_number INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        notes TEXT NOT NULL DEFAULT '',
+        payment_method TEXT NOT NULL DEFAULT '',
+        payment_status TEXT NOT NULL DEFAULT 'unpaid',
+        total_cents INTEGER NOT NULL,
+        origin TEXT NOT NULL DEFAULT 'mesa',
+        delivery TEXT NOT NULL DEFAULT 'mozo',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO orders_v5
+        (id, restaurant_id, table_id, daily_number, status, notes, payment_method,
+         payment_status, total_cents, origin, delivery, created_at, updated_at)
+        SELECT id, restaurant_id, table_id, daily_number, status, notes, payment_method,
+               payment_status, total_cents, 'mesa', 'mozo', created_at, updated_at
+          FROM orders;
+      DROP TABLE orders;
+      ALTER TABLE orders_v5 RENAME TO orders;
+      CREATE INDEX idx_orders_restaurant_status ON orders (restaurant_id, status);
+      CREATE INDEX idx_orders_restaurant_created ON orders (restaurant_id, created_at);
+    `);
+  },
 ];
 
 function migrate(db: Database.Database) {
@@ -179,13 +223,31 @@ function migrate(db: Database.Database) {
   const { v } = db
     .prepare("SELECT COALESCE(MAX(version), 0) AS v FROM schema_migrations")
     .get() as { v: number };
+  if (v >= MIGRATIONS.length) return;
 
-  for (let i = v; i < MIGRATIONS.length; i++) {
-    const version = i + 1;
-    db.transaction(() => {
-      MIGRATIONS[i](db);
-      db.prepare("INSERT INTO schema_migrations (version) VALUES (?)").run(version);
-    })();
+  // Las claves foráneas se apagan mientras se migra. Algunas migraciones recrean una
+  // tabla con hijos (la 5 rehace `orders`, que `order_items` referencia): SQLite no
+  // quita un NOT NULL sin recrear la tabla, y `DROP TABLE` con las FK activas dispara
+  // un borrado implícito que viola la referencia del hijo —probado: falla con "FOREIGN
+  // KEY constraint failed" en cualquier base que ya tenga pedidos. El procedimiento que
+  // recomienda SQLite es apagarlas, migrar, y volver a encenderlas con un
+  // foreign_key_check que confirma que no quedó nada colgando. El pragma es no-op dentro
+  // de una transacción, así que se hace AQUÍ, envolviendo el bucle, no dentro de cada una.
+  db.pragma("foreign_keys = OFF");
+  try {
+    for (let i = v; i < MIGRATIONS.length; i++) {
+      const version = i + 1;
+      db.transaction(() => {
+        MIGRATIONS[i](db);
+        db.prepare("INSERT INTO schema_migrations (version) VALUES (?)").run(version);
+      })();
+    }
+    const rotas = db.pragma("foreign_key_check") as unknown[];
+    if (rotas.length > 0) {
+      throw new Error(`Una migración dejó referencias rotas: ${JSON.stringify(rotas)}`);
+    }
+  } finally {
+    db.pragma("foreign_keys = ON");
   }
 }
 

@@ -6,6 +6,7 @@ import type {
   MenuItem,
   PublicRestaurant,
   Restaurant,
+  ServiceMode,
   Table,
 } from "@/lib/types";
 
@@ -24,9 +25,12 @@ function toPublic(r: Restaurant): PublicRestaurant {
     logo: r.logo,
     cover_image: r.cover_image,
     brand_color: r.brand_color,
+    service_mode: r.service_mode,
     active: r.active,
   };
 }
+
+const MODOS_VALIDOS: ServiceMode[] = ["despacho", "salon", "mixto"];
 
 export async function GET(
   _req: Request,
@@ -90,6 +94,7 @@ export async function PATCH(
     logo?: string;
     coverImage?: string;
     brandColor?: string;
+    serviceMode?: string;
     staffPin?: string;
     adminPin?: string;
   };
@@ -113,6 +118,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Color inválido (usa formato #rrggbb)" }, { status: 400 });
     }
     fields.push(["brand_color", color.toLowerCase()]);
+  }
+  if (body.serviceMode !== undefined) {
+    if (!MODOS_VALIDOS.includes(body.serviceMode as ServiceMode)) {
+      return NextResponse.json({ error: "Modo de servicio inválido" }, { status: 400 });
+    }
+    fields.push(["service_mode", body.serviceMode]);
   }
   if (body.staffPin !== undefined) {
     if (!/^\d{4,6}$/.test(String(body.staffPin))) {

@@ -320,6 +320,9 @@ export interface Dict {
     other: string;
     current: string;
     saveColor: string;
+    serviceMode: string;
+    serviceModeHint: string;
+    modes: Record<"salon" | "despacho" | "mixto", { name: string; desc: string }>;
     saved: string;
     payTitle: string;
     payHint: string;
@@ -583,6 +586,23 @@ const es: Dict = {
     uploadCover: "📷 Subir portada",
     brandColor: "Color de marca",
     colorHint: "Un token re-tematiza todo el producto. El contraste del texto se calcula solo.",
+    serviceMode: "Modo de servicio",
+    serviceModeHint:
+      "Define cómo trabaja el local y qué pantallas usa. Se guarda al tocar una opción.",
+    modes: {
+      salon: {
+        name: "Salón",
+        desc: "Mesas con QR y mozos. El cliente pide desde su mesa y le llevan el plato.",
+      },
+      despacho: {
+        name: "Despacho",
+        desc: "Sin mesas ni mozos: se pide en el mostrador y se recoge cuando la cocina llama.",
+      },
+      mixto: {
+        name: "Mixto",
+        desc: "Mesas con QR y además pedidos de mostrador para llevar, en la misma caja.",
+      },
+    },
     other: "Otro:",
     current: "Actual:",
     saveColor: "Guardar color",
@@ -851,6 +871,23 @@ const en: Dict = {
     uploadCover: "📷 Upload cover",
     brandColor: "Brand colour",
     colorHint: "One token re-themes the whole product. Text contrast is worked out for you.",
+    serviceMode: "Service mode",
+    serviceModeHint:
+      "Sets how the venue works and which screens it uses. Saved as soon as you pick one.",
+    modes: {
+      salon: {
+        name: "Dining room",
+        desc: "QR tables and waiters. Guests order from their table and the dish is brought over.",
+      },
+      despacho: {
+        name: "Counter",
+        desc: "No tables, no waiters: order at the counter and pick up when the kitchen calls.",
+      },
+      mixto: {
+        name: "Mixed",
+        desc: "QR tables plus counter takeaway orders, all through the same till.",
+      },
+    },
     other: "Other:",
     current: "Current:",
     saveColor: "Save colour",
@@ -1114,6 +1151,22 @@ const zh: Dict = {
     uploadCover: "📷 上传封面",
     brandColor: "品牌主色",
     colorHint: "一个色值即可重塑整个产品，文字对比度会自动计算。",
+    serviceMode: "服务模式",
+    serviceModeHint: "决定店铺的运营方式和使用的界面。点击选项即保存。",
+    modes: {
+      salon: {
+        name: "堂食",
+        desc: "带二维码的餐桌和服务员。顾客在餐桌点餐，由服务员送菜。",
+      },
+      despacho: {
+        name: "自取",
+        desc: "无餐桌无服务员：在柜台点餐，厨房叫号后自取。",
+      },
+      mixto: {
+        name: "混合",
+        desc: "既有二维码餐桌，也支持柜台外带下单，统一收银。",
+      },
+    },
     other: "其他：",
     current: "当前：",
     saveColor: "保存主色",
