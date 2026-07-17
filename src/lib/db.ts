@@ -231,6 +231,27 @@ const MIGRATIONS: ((db: Database.Database) => void)[] = [
   (db) => {
     addColumn(db, "orders", "customer_name", "TEXT NOT NULL DEFAULT ''");
   },
+
+  // 8 · Verificación real del pago (feedback del socio en Lima).
+  //
+  // Hasta ahora la caja confirmaba un pago con un solo toque, sin prueba ni registro.
+  // El socio pide el flujo de verdad: el cliente sube la captura de su Yape/Plin, y la
+  // caja, al confirmar, ingresa el número de operación y el monto recibido —y de paso
+  // la propina—. Para tarjeta con POS del local, el mismo número de operación guarda
+  // el código del voucher.
+  //
+  //   payment_proof     — la captura que subió el cliente (data URI base64, '' si no).
+  //                       Va en la propia base porque el disco de Render se borra en
+  //                       cada deploy; se reduce en el navegador antes de subirla.
+  //   payment_ref       — N.º de operación de Yape/Plin, o código del POS ('' si no).
+  //   paid_amount_cents — lo que la caja confirma que entró; puede diferir del total.
+  //   tip_cents         — propina, que la caja ingresa al confirmar (0 si no hubo).
+  (db) => {
+    addColumn(db, "orders", "payment_proof", "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, "orders", "payment_ref", "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, "orders", "paid_amount_cents", "INTEGER NOT NULL DEFAULT 0");
+    addColumn(db, "orders", "tip_cents", "INTEGER NOT NULL DEFAULT 0");
+  },
 ];
 
 function migrate(db: Database.Database) {

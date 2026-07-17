@@ -126,6 +126,13 @@ export interface Order {
   payment_method: string;
   payment_status: PaymentStatus;
   total_cents: number;
+  // Captura del pago que subió el cliente (data URI base64, '' si no subió nada).
+  payment_proof: string;
+  // N.º de operación de Yape/Plin, o código del POS que ingresa la caja ('' si no).
+  payment_ref: string;
+  // Lo que la caja confirma que entró, y la propina. En céntimos, como el resto.
+  paid_amount_cents: number;
+  tip_cents: number;
   origin: OrderOrigin;
   delivery: OrderDelivery;
   // Nombre que dejó el cliente de mostrador ('' si no dejó, o si es pedido de mesa).

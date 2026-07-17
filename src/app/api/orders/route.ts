@@ -96,8 +96,17 @@ export async function GET(req: Request) {
 
   const { orders, tables } = listarPedidos(db, restaurant, vista);
 
+  // La captura del pago puede pesar cientos de KB en base64, y esta lista se sondea
+  // cada pocos segundos: mandarla en cada vuelta sería tirar datos a la basura. Se
+  // manda solo si existe (una bandera), y la caja pide la imagen entera al abrir la
+  // cuenta, con GET /api/orders/[id].
+  const ligeros = orders.map(({ payment_proof, ...resto }) => ({
+    ...resto,
+    has_proof: payment_proof !== "",
+  }));
+
   return NextResponse.json({
-    orders,
+    orders: ligeros,
     currency: restaurant.currency,
     // La caja arma con esto sus métodos de cobro; antes asumía "PE".
     country: restaurant.country,

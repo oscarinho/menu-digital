@@ -7,8 +7,27 @@ import { IconCheck, IconEquis } from "@/components/icons";
 import { fmt, payLabel, useT } from "@/lib/i18n";
 import { useKeepAwake } from "@/lib/keep-awake";
 import { formatMoney } from "@/lib/money";
-import { getPaymentMethods } from "@/lib/payments";
+import { getPaymentMethods, isInAppMethod } from "@/lib/payments";
 import type { OrderWithDetails } from "@/lib/types";
+
+// La lista que se sondea no trae la captura (pesa); trae una bandera y la caja pide
+// la imagen entera al abrir la cuenta. Ver /api/orders (GET).
+type CajaOrder = Omit<OrderWithDetails, "payment_proof"> & { has_proof: boolean };
+
+// Lo que la caja está escribiendo mientras comprueba un pago: método, N.º de
+// operación, monto (en unidades, como lo teclea) y propina.
+interface FormularioCobro {
+  method: string;
+  ref: string;
+  amount: string;
+  tip: string;
+}
+
+// "12.50" → 1250 céntimos. Vacío o basura → 0.
+function aCentimos(txt: string): number {
+  const n = Math.round(parseFloat(txt.replace(",", ".")) * 100);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 
 // La caja.
 //
@@ -29,11 +48,17 @@ function hourOf(ts: string): string {
 
 function CajaBoard({ slug }: { slug: string }) {
   const [t, lang, setLang] = useT("caja");
-  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [orders, setOrders] = useState<CajaOrder[]>([]);
   const [restaurant, setRestaurant] = useState<Marca | null>(null);
   const [currency, setCurrency] = useState("PEN");
   const [country, setCountry] = useState("PE");
   const [charging, setCharging] = useState<string | null>(null);
+  // El formulario de comprobación de la cuenta que está abierta ahora mismo, y la
+  // captura del cliente (cargada aparte, bajo demanda). Solo hay una cuenta abierta
+  // a la vez, así que con un único formulario alcanza.
+  const [form, setForm] = useState<FormularioCobro | null>(null);
+  const [proofImg, setProofImg] = useState<string | null>(null);
+  const [proofLoading, setProofLoading] = useState(false);
 
   useKeepAwake();
 
@@ -75,14 +100,95 @@ function CajaBoard({ slug }: { slug: string }) {
   // cliente fuera de Perú, la caja no debe ofrecerle Yape.
   const methods = getPaymentMethods(country);
 
-  async function markPaid(orderId: string, method: string) {
+  const ahora = () => new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  // Abrir la comprobación de una cuenta: prepara el formulario (método sugerido, monto
+  // = total) y, si el cliente subió captura, la pide aparte —la lista no la trae.
+  function abrirCobro(o: CajaOrder) {
+    setCharging(o.id);
+    setProofImg(null);
+    setForm({
+      method: o.payment_method || methods[0]?.id || "cash",
+      ref: "",
+      amount: (o.total_cents / 100).toFixed(2),
+      tip: "",
+    });
+    if (o.has_proof) {
+      setProofLoading(true);
+      fetch(`/api/orders/${o.id}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setProofImg(d.order?.payment_proof || null))
+        .catch(() => {})
+        .finally(() => setProofLoading(false));
+    }
+  }
+
+  function cerrarCobro() {
+    setCharging(null);
+    setForm(null);
+    setProofImg(null);
+  }
+
+  // Confirmar el cobro con todo lo que anotó la caja. El monto por defecto es el
+  // total; si el cajero lo dejó igual, no se manda y el servidor usa el total.
+  async function confirmarCobro(orderId: string) {
+    if (!form) return;
+    const amountCents = aCentimos(form.amount);
+    const tipCents = aCentimos(form.tip);
+    const ref = form.ref.trim();
     setOrders((os) =>
       os.map((o) =>
         o.id === orderId
           ? {
               ...o,
               payment_status: "paid" as const,
-              payment_method: method,
+              payment_method: form.method,
+              payment_ref: ref,
+              paid_amount_cents: amountCents || o.total_cents,
+              tip_cents: tipCents,
+              updated_at: ahora(),
+            }
+          : o
+      )
+    );
+    cerrarCobro();
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentMethod: form.method,
+        paymentRef: ref,
+        amountCents,
+        tipCents,
+      }),
+    });
+  }
+
+  // Cambiar solo el método de un cobro ya cerrado (sin tocar operación/monto/propina).
+  async function swapMethod(orderId: string, method: string) {
+    setOrders((os) =>
+      os.map((o) =>
+        o.id === orderId ? { ...o, payment_method: method, updated_at: ahora() } : o
+      )
+    );
+    setCharging(null);
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ changeMethod: true, paymentMethod: method }),
+    });
+  }
+
+  // Deshacer un cobro puesto por error: el pedido vuelve arriba, a cuentas abiertas.
+  // No borra plata: solo dice "todavía no pagó", que es lo que la caja necesita para
+  // volver a cobrarlo bien.
+  async function revertPaid(orderId: string) {
+    setOrders((os) =>
+      os.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              payment_status: "unpaid" as const,
               updated_at: new Date().toISOString().slice(0, 19).replace("T", " "),
             }
           : o
@@ -92,7 +198,7 @@ function CajaBoard({ slug }: { slug: string }) {
     await fetch(`/api/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentMethod: method }),
+      body: JSON.stringify({ revertPayment: true }),
     });
   }
 
@@ -232,53 +338,158 @@ function CajaBoard({ slug }: { slug: string }) {
                     {formatMoney(o.total_cents, currency)}
                   </p>
 
-                  {claimed ? (
-                    <button
-                      onClick={() => markPaid(o.id, o.payment_method)}
-                      className="flex items-center gap-2 px-5 py-3.5 text-sm font-extrabold text-white transition active:scale-[0.96]"
-                      style={{ borderRadius: 13, background: "var(--success)" }}
-                    >
+                  <button
+                    onClick={() => (eligiendo ? cerrarCobro() : abrirCobro(o))}
+                    className="flex items-center gap-2 px-5 py-3.5 text-sm font-extrabold transition active:scale-[0.96]"
+                    style={{
+                      borderRadius: 13,
+                      background: eligiendo
+                        ? "var(--neutral-soft)"
+                        : claimed
+                          ? "var(--success)"
+                          : "var(--brand)",
+                      color: eligiendo ? "var(--text)" : claimed ? "#fff" : "var(--brand-contrast)",
+                    }}
+                  >
+                    {eligiendo ? (
+                      <IconEquis size={16} />
+                    ) : claimed ? (
                       <IconCheck size={17} />
-                      {t.caja.confirm}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setCharging(eligiendo ? null : o.id)}
-                      className="flex items-center gap-2 px-5 py-3.5 text-sm font-extrabold transition active:scale-[0.96]"
-                      style={{
-                        borderRadius: 13,
-                        background: eligiendo ? "var(--neutral-soft)" : "var(--brand)",
-                        color: eligiendo ? "var(--text)" : "var(--brand-contrast)",
-                      }}
-                    >
-                      {eligiendo && <IconEquis size={16} />}
-                      {eligiendo ? t.caja.cancel : t.caja.charge}
-                    </button>
-                  )}
+                    ) : null}
+                    {eligiendo ? t.caja.cancel : claimed ? t.caja.confirm : t.caja.charge}
+                  </button>
                 </div>
 
-                {/* Con qué pagó. Aparece al pulsar "Cobrar" y ocupa el ancho entero:
-                    botones grandes, porque se tocan con prisa y casi sin mirar. */}
-                {eligiendo && (
+                {/* Comprobar el pago: la captura del cliente, el método, y lo que la
+                    caja anota —N.º de operación, monto y propina— antes de dar por
+                    cobrada la cuenta. Todo opcional salvo el método: un pago en
+                    efectivo no tiene operación que anotar. */}
+                {eligiendo && form && (
                   <div
-                    className="flex flex-wrap gap-2 px-4 pb-4 sm:px-5"
+                    className="flex flex-col gap-3 px-4 pb-4 sm:px-5"
                     style={{ animation: "reveal .18s ease both" }}
                   >
-                    {methods.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => markPaid(o.id, m.id)}
-                        className="flex-1 px-4 py-3.5 text-sm font-extrabold transition active:scale-[0.96]"
-                        style={{
-                          borderRadius: 13,
-                          border: "1px solid var(--border)",
-                          background: "var(--surface-2)",
-                          color: "var(--text)",
-                        }}
+                    {(o.has_proof || proofLoading) && (
+                      <div>
+                        <p
+                          className="mb-1.5 text-[11.5px] font-extrabold uppercase tracking-[0.08em]"
+                          style={{ color: "var(--text-faint)" }}
+                        >
+                          {t.caja.proofTitle}
+                        </p>
+                        {proofLoading ? (
+                          <div
+                            className="h-40 w-full animate-pulse"
+                            style={{ borderRadius: 12, background: "var(--neutral-soft)" }}
+                          />
+                        ) : proofImg ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={proofImg}
+                            alt={t.caja.proofTitle}
+                            className="max-h-72 w-auto object-contain"
+                            style={{ borderRadius: 12, border: "1px solid var(--border-2)" }}
+                          />
+                        ) : null}
+                      </div>
+                    )}
+                    {claimed && !o.has_proof && (
+                      <p className="text-[12.5px] font-semibold" style={{ color: "var(--warning)" }}>
+                        {t.caja.noProof}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      {methods.map((m) => {
+                        const on = form.method === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => setForm((f) => (f ? { ...f, method: m.id } : f))}
+                            className="flex-1 px-4 py-3 text-sm font-extrabold transition active:scale-[0.96]"
+                            style={{
+                              borderRadius: 13,
+                              border: `1.5px solid ${on ? "var(--brand)" : "var(--border)"}`,
+                              background: "var(--surface-2)",
+                              color: "var(--text)",
+                            }}
+                          >
+                            {m.icon} {payLabel(t, m.id)}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* El N.º de operación solo tiene sentido en pago digital; en
+                        efectivo se oculta para no pedir lo que no existe. */}
+                    <div className="flex flex-wrap gap-2">
+                      {isInAppMethod(form.method) && (
+                        <label
+                          className="min-w-[46%] flex-1 text-[12px] font-bold"
+                          style={{ color: "var(--text-faint)" }}
+                        >
+                          {t.caja.opNumber}
+                          <input
+                            value={form.ref}
+                            onChange={(e) => setForm((f) => (f ? { ...f, ref: e.target.value } : f))}
+                            inputMode="numeric"
+                            placeholder={t.caja.opNumberPh}
+                            className="mt-1 w-full px-3 py-2.5 text-[15px] font-bold tabular-nums"
+                            style={{
+                              borderRadius: 11,
+                              border: "1px solid var(--border)",
+                              background: "var(--surface)",
+                              color: "var(--text)",
+                            }}
+                          />
+                        </label>
+                      )}
+                      <label
+                        className="min-w-[46%] flex-1 text-[12px] font-bold"
+                        style={{ color: "var(--text-faint)" }}
                       >
-                        {m.icon} {payLabel(t, m.id)}
-                      </button>
-                    ))}
+                        {t.caja.amountReceived}
+                        <input
+                          value={form.amount}
+                          onChange={(e) => setForm((f) => (f ? { ...f, amount: e.target.value } : f))}
+                          inputMode="decimal"
+                          className="mt-1 w-full px-3 py-2.5 text-[15px] font-bold tabular-nums"
+                          style={{
+                            borderRadius: 11,
+                            border: "1px solid var(--border)",
+                            background: "var(--surface)",
+                            color: "var(--text)",
+                          }}
+                        />
+                      </label>
+                      <label
+                        className="min-w-[46%] flex-1 text-[12px] font-bold"
+                        style={{ color: "var(--text-faint)" }}
+                      >
+                        {t.caja.tip}
+                        <input
+                          value={form.tip}
+                          onChange={(e) => setForm((f) => (f ? { ...f, tip: e.target.value } : f))}
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          className="mt-1 w-full px-3 py-2.5 text-[15px] font-bold tabular-nums"
+                          style={{
+                            borderRadius: 11,
+                            border: "1px solid var(--border)",
+                            background: "var(--surface)",
+                            color: "var(--text)",
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <button
+                      onClick={() => confirmarCobro(o.id)}
+                      className="flex items-center justify-center gap-2 px-5 py-3.5 text-sm font-extrabold text-white transition active:scale-[0.97]"
+                      style={{ borderRadius: 13, background: "var(--success)" }}
+                    >
+                      <IconCheck size={17} /> {t.caja.confirm}
+                    </button>
                   </div>
                 )}
               </article>
@@ -315,39 +526,96 @@ function CajaBoard({ slug }: { slug: string }) {
                 borderRadius: 18,
               }}
             >
-              {paid.map((o, i) => (
-                <div
-                  key={o.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3.5"
-                  style={{ borderTop: i === 0 ? "none" : "1px solid var(--border-2)" }}
-                >
-                  <span className="shrink-0" style={{ color: "var(--success)" }}>
-                    <IconCheck size={15} />
-                  </span>
-                  <span
-                    className="text-[15px] font-extrabold"
-                    style={{
-                      color: "var(--text)",
-                      fontFamily: "var(--font-display), system-ui, sans-serif",
-                    }}
+              {paid.map((o, i) => {
+                const eligiendo = charging === o.id;
+                return (
+                  <div
+                    key={o.id}
+                    style={{ borderTop: i === 0 ? "none" : "1px solid var(--border-2)" }}
                   >
-                    {o.table_label || o.customer_name || `#${o.daily_number}`}
-                  </span>
-                  <span
-                    className="text-[12.5px] font-semibold tabular-nums"
-                    style={{ color: "var(--text-faint)" }}
-                  >
-                    #{o.daily_number} · {hourOf(o.updated_at)}
-                    {o.payment_method && ` · ${payLabel(t, o.payment_method)}`}
-                  </span>
-                  <span
-                    className="ml-auto text-[16px] font-extrabold tabular-nums"
-                    style={{ color: "var(--text)" }}
-                  >
-                    {formatMoney(o.total_cents, currency)}
-                  </span>
-                </div>
-              ))}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3.5">
+                      <span className="shrink-0" style={{ color: "var(--success)" }}>
+                        <IconCheck size={15} />
+                      </span>
+                      <span
+                        className="text-[15px] font-extrabold"
+                        style={{
+                          color: "var(--text)",
+                          fontFamily: "var(--font-display), system-ui, sans-serif",
+                        }}
+                      >
+                        {o.table_label || o.customer_name || `#${o.daily_number}`}
+                      </span>
+                      <span
+                        className="text-[12.5px] font-semibold tabular-nums"
+                        style={{ color: "var(--text-faint)" }}
+                      >
+                        #{o.daily_number} · {hourOf(o.updated_at)}
+                        {o.payment_method && ` · ${payLabel(t, o.payment_method)}`}
+                      </span>
+                      <span
+                        className="ml-auto text-[16px] font-extrabold tabular-nums"
+                        style={{ color: "var(--text)" }}
+                      >
+                        {formatMoney(o.total_cents, currency)}
+                      </span>
+                    </div>
+
+                    {/* Corregir un cobro ya cerrado: cambiar con qué se pagó, o
+                        deshacerlo del todo si se marcó por error. Discreto —van en gris,
+                        no compiten con los botones grandes de cobrar de arriba. */}
+                    <div className="flex flex-wrap gap-2 px-5 pb-3">
+                      <button
+                        onClick={() => setCharging(eligiendo ? null : o.id)}
+                        className="px-3 py-1.5 text-[12.5px] font-bold transition active:scale-[0.96]"
+                        style={{
+                          borderRadius: 999,
+                          border: "1px solid var(--border)",
+                          background: eligiendo ? "var(--neutral-soft)" : "transparent",
+                          color: "var(--text-faint)",
+                        }}
+                      >
+                        {eligiendo ? t.caja.cancel : t.caja.changeMethod}
+                      </button>
+                      <button
+                        onClick={() => revertPaid(o.id)}
+                        className="px-3 py-1.5 text-[12.5px] font-bold transition active:scale-[0.96]"
+                        style={{
+                          borderRadius: 999,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--danger, var(--warning))",
+                        }}
+                      >
+                        {t.caja.revert}
+                      </button>
+                    </div>
+
+                    {eligiendo && (
+                      <div
+                        className="flex flex-wrap gap-2 px-5 pb-4"
+                        style={{ animation: "reveal .18s ease both" }}
+                      >
+                        {methods.map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => swapMethod(o.id, m.id)}
+                            className="flex-1 px-4 py-3 text-sm font-extrabold transition active:scale-[0.96]"
+                            style={{
+                              borderRadius: 13,
+                              border: `1px solid ${o.payment_method === m.id ? "var(--brand)" : "var(--border)"}`,
+                              background: "var(--surface-2)",
+                              color: "var(--text)",
+                            }}
+                          >
+                            {m.icon} {payLabel(t, m.id)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

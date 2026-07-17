@@ -3,10 +3,13 @@ import { describe, it } from "node:test";
 import {
   ErrorDePedido,
   cambiarEstado,
+  cambiarMetodoPago,
   crearPedido,
+  deshacerCobro,
   informarPago,
   listarPedidos,
   registrarCobro,
+  verPedido,
 } from "@/domain/pedidos";
 import { baseTemporal, sembrarLocal } from "./local";
 
@@ -87,6 +90,23 @@ describe("el pedido, de la mesa a la caja", () => {
     assert.equal(tras?.payment_status, "paid");
   });
 
+  it("la caja puede deshacer un cobro puesto por error", () => {
+    const { db, l, pedir } = local();
+    const { id } = pedir();
+
+    registrarCobro(db, id, "yape");
+    const revertido = deshacerCobro(db, id);
+    assert.equal(revertido?.payment_status, "unpaid", "vuelve a cuenta abierta");
+
+    // Y vuelve a aparecer en la caja como pendiente, no en cobrados.
+    const caja = listarPedidos(db, l.restaurant, "caja").orders;
+    assert.equal(caja[0].payment_status, "unpaid");
+
+    // Deshacer sobre algo que no está pagado no hace nada raro.
+    const otra = deshacerCobro(db, id);
+    assert.equal(otra?.payment_status, "unpaid");
+  });
+
   it("la caja confirma el cobro y guarda con qué se pagó", () => {
     const { db, l, pedir } = local();
     const { id } = pedir();
@@ -100,6 +120,66 @@ describe("el pedido, de la mesa a la caja", () => {
     const caja = listarPedidos(db, l.restaurant, "caja").orders;
     assert.equal(caja.length, 1);
     assert.equal(caja[0].payment_status, "paid");
+  });
+
+  it("el cliente adjunta la captura y queda guardada para la caja", () => {
+    const { db, pedir } = local();
+    const { id } = pedir();
+
+    const captura = "data:image/jpeg;base64,/9j/abc123";
+    informarPago(db, id, captura);
+    assert.equal(verPedido(db, id)!.order.payment_proof, captura, "se guarda la captura");
+    assert.equal(verPedido(db, id)!.order.payment_status, "claimed");
+
+    // Basura que no es una imagen no entra (defensa contra un payload cualquiera).
+    const { id: id2 } = pedir();
+    informarPago(db, id2, "javascript:alert(1)");
+    assert.equal(verPedido(db, id2)!.order.payment_proof, "", "solo data:image/");
+  });
+
+  it("la caja anota número de operación, monto y propina al confirmar", () => {
+    const { db, pedir } = local();
+    const { id } = pedir(); // total 3500
+
+    registrarCobro(db, id, "yape", { ref: "15857647", amountCents: 3500, tipCents: 500 });
+    const o = verPedido(db, id)!.order;
+    assert.equal(o.payment_ref, "15857647");
+    assert.equal(o.paid_amount_cents, 3500);
+    assert.equal(o.tip_cents, 500);
+
+    // Sin monto explícito, se toma el total del pedido: el caso normal.
+    const { id: id2 } = pedir();
+    registrarCobro(db, id2, "cash");
+    assert.equal(verPedido(db, id2)!.order.paid_amount_cents, 3500, "monto = total por defecto");
+  });
+
+  it("cambiar solo el método no borra la operación ni la propina ya anotadas", () => {
+    const { db, pedir } = local();
+    const { id } = pedir();
+
+    registrarCobro(db, id, "card", { ref: "POS-9931", tipCents: 300 });
+    cambiarMetodoPago(db, id, "yape");
+
+    const o = verPedido(db, id)!.order;
+    assert.equal(o.payment_method, "yape", "el método cambió");
+    assert.equal(o.payment_ref, "POS-9931", "la operación se mantiene");
+    assert.equal(o.tip_cents, 300, "la propina se mantiene");
+    assert.equal(o.payment_status, "paid");
+  });
+
+  it("deshacer un cobro limpia lo que anotó la caja, pero conserva la captura del cliente", () => {
+    const { db, pedir } = local();
+    const { id } = pedir();
+
+    informarPago(db, id, "data:image/png;base64,zzz");
+    registrarCobro(db, id, "yape", { ref: "111", tipCents: 200 });
+    deshacerCobro(db, id);
+
+    const o = verPedido(db, id)!.order;
+    assert.equal(o.payment_status, "unpaid");
+    assert.equal(o.payment_ref, "", "se borra la operación de un cobro errado");
+    assert.equal(o.tip_cents, 0, "se borra la propina");
+    assert.equal(o.payment_proof, "data:image/png;base64,zzz", "la captura del cliente queda");
   });
 
   it("la mesa que ya comió y ya pagó queda como cuenta cerrada, no desaparece", () => {

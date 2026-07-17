@@ -306,18 +306,42 @@ export function buscarPedido(db: Database.Database, id: string): Order | undefin
   return db.prepare("SELECT * FROM orders WHERE id = ?").get(id) as Order | undefined;
 }
 
+// La captura del cliente se guarda en la propia base como data URI. Se acota el
+// tamaño: el navegador ya la reduce antes de subirla, pero la caja no debe poder
+// meter media base con una imagen enorme. ~1.2 MB de base64 ≈ una foto de celular
+// bien comprimida; de ahí para arriba, se ignora (el aviso de pago igual pasa).
+const MAX_PROOF_CHARS = 1_200_000;
+
+function proofLimpio(proof: unknown): string {
+  if (typeof proof !== "string") return "";
+  if (!proof.startsWith("data:image/")) return "";
+  if (proof.length > MAX_PROOF_CHARS) return "";
+  return proof;
+}
+
 /**
  * "Ya pagué con Yape/Plin" — lo dice el comensal, sin PIN, y por eso es la única
  * acción pública sobre un pedido. Solo mueve unpaid → claimed: quien confirma que
  * la plata llegó de verdad es la caja. Repetirlo no cambia nada.
+ *
+ * Si el comensal adjunta la captura de su Yape/Plin, se guarda para que la caja la
+ * compruebe. Es opcional: sin captura, el aviso igual llega (no todos saben o pueden
+ * subirla), pero con ella la caja no tiene que pedirle el celular.
  */
-export function informarPago(db: Database.Database, id: string): Order | undefined {
+export function informarPago(
+  db: Database.Database,
+  id: string,
+  proof?: unknown
+): Order | undefined {
   const order = buscarPedido(db, id);
   if (!order) return undefined;
   if (order.payment_status === "unpaid") {
+    const captura = proofLimpio(proof);
     db.prepare(
-      "UPDATE orders SET payment_status = 'claimed', updated_at = datetime('now') WHERE id = ?"
-    ).run(id);
+      `UPDATE orders SET payment_status = 'claimed',
+       payment_proof = CASE WHEN ? != '' THEN ? ELSE payment_proof END,
+       updated_at = datetime('now') WHERE id = ?`
+    ).run(captura, captura, id);
   }
   return buscarPedido(db, id);
 }
@@ -346,15 +370,84 @@ export function cambiarEstado(
   return buscarPedido(db, id);
 }
 
-/** La caja confirma que el cobro entró, y con qué método. */
+/** Lo que la caja anota al confirmar un cobro, además del método. Todo opcional:
+ *  un cobro en efectivo no necesita número de operación ni captura. */
+export interface DetalleCobro {
+  /** N.º de operación de Yape/Plin, o código del voucher del POS. */
+  ref?: string;
+  /** Monto que la caja confirma que entró, en céntimos. Si no viene, el total. */
+  amountCents?: number;
+  /** Propina, en céntimos. */
+  tipCents?: number;
+}
+
+const centimosNoNegativos = (v: unknown): number => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+/**
+ * La caja confirma que el cobro entró, con qué método y —si los anotó— el número de
+ * operación, el monto verificado y la propina. El monto por defecto es el total del
+ * pedido: el caso normal es que coincida, y así el cajero no reescribe lo obvio.
+ */
 export function registrarCobro(
+  db: Database.Database,
+  id: string,
+  method: string,
+  detalle: DetalleCobro = {}
+): Order | undefined {
+  const orden = buscarPedido(db, id);
+  if (!orden) return undefined;
+  const monto =
+    detalle.amountCents === undefined
+      ? orden.total_cents
+      : centimosNoNegativos(detalle.amountCents);
+  db.prepare(
+    `UPDATE orders SET payment_status = 'paid', payment_method = ?,
+     payment_ref = ?, paid_amount_cents = ?, tip_cents = ?,
+     updated_at = datetime('now') WHERE id = ?`
+  ).run(
+    String(method),
+    String(detalle.ref ?? "").trim().slice(0, 60),
+    monto,
+    centimosNoNegativos(detalle.tipCents),
+    id
+  );
+  return buscarPedido(db, id);
+}
+
+/**
+ * Cambiar solo con qué se pagó, sin tocar lo demás. Distinto de registrarCobro: aquí
+ * el cobro ya está bien anotado (número de operación, monto, propina) y lo único mal
+ * es el método —"lo puse tarjeta pero fue Yape"—, así que no se pisa nada de eso.
+ */
+export function cambiarMetodoPago(
   db: Database.Database,
   id: string,
   method: string
 ): Order | undefined {
   db.prepare(
-    `UPDATE orders SET payment_status = 'paid', payment_method = ?,
-     updated_at = datetime('now') WHERE id = ?`
+    "UPDATE orders SET payment_method = ?, updated_at = datetime('now') WHERE id = ?"
   ).run(String(method), id);
+  return buscarPedido(db, id);
+}
+
+/**
+ * Deshacer un cobro: la caja marcó pagado por error y el cliente todavía no pagó.
+ * Vuelve el pedido a la lista de cuentas abiertas como 'unpaid' —el estado honesto:
+ * nadie ha confirmado que la plata entró—. Solo actúa sobre un pedido ya pagado,
+ * así que repetirlo o dispararlo sobre una cuenta abierta no hace nada.
+ */
+export function deshacerCobro(db: Database.Database, id: string): Order | undefined {
+  // Se limpian los datos que anotó la caja (operación, monto, propina): si fue un
+  // error, no deben quedar rondando. La captura del cliente sí se conserva —esa la
+  // subió él y sigue siendo válida para cuando se vuelva a cobrar.
+  db.prepare(
+    `UPDATE orders SET payment_status = 'unpaid',
+     payment_ref = '', paid_amount_cents = 0, tip_cents = 0,
+     updated_at = datetime('now')
+     WHERE id = ? AND payment_status = 'paid'`
+  ).run(id);
   return buscarPedido(db, id);
 }

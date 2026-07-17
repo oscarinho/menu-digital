@@ -27,6 +27,33 @@ const CARD: React.CSSProperties = {
   boxShadow: "0 14px 30px -26px rgba(33,29,24,.4)",
 };
 
+// Reduce una imagen a `maxLado` px de lado mayor y la devuelve como data URI JPEG.
+// Todo en el navegador: nada de esto sube el archivo original a ningún lado.
+function reducirImagen(file: File, maxLado: number, calidad: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+      const w = Math.round(img.width * escala);
+      const h = Math.round(img.height * escala);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("sin canvas"));
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", calidad));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("imagen ilegible"));
+    };
+    img.src = url;
+  });
+}
+
 export default function PedidoPage({
   params,
 }: {
@@ -37,6 +64,9 @@ export default function PedidoPage({
   const [data, setData] = useState<TrackingData | null>(null);
   const [error, setError] = useState("");
   const [claiming, setClaiming] = useState(false);
+  // La captura del pago que el comensal adjunta, ya reducida a data URI.
+  const [proof, setProof] = useState<string | null>(null);
+  const [readingProof, setReadingProof] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -113,14 +143,30 @@ export default function PedidoPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, t.track.readyTab]);
 
+  // La captura se reduce EN EL CELULAR antes de subir: una foto de pantalla puede
+  // pesar varios MB, y a la base solo debe llegar lo justo para que la caja la lea.
+  // Se encoge a 900 px de lado mayor y se recomprime en JPEG. Si algo falla, se sube
+  // la original: mejor una imagen grande que ninguna.
+  async function elegirCaptura(file: File) {
+    setReadingProof(true);
+    try {
+      const reducida = await reducirImagen(file, 900, 0.7);
+      setProof(reducida);
+    } catch {
+      setProof(null);
+    } finally {
+      setReadingProof(false);
+    }
+  }
+
   async function claimPayment() {
-    if (claiming || !data) return;
+    if (claiming || readingProof || !data) return;
     setClaiming(true);
     try {
       const res = await fetch(`/api/orders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ claimPayment: true }),
+        body: JSON.stringify({ claimPayment: true, ...(proof ? { proof } : {}) }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -362,10 +408,58 @@ export default function PedidoPage({
                 </strong>
               </p>
             )}
+            {/* Subir la captura del Yape/Plin. El comensal muestra el comprobante al
+                vendedor; aquí lo deja en el sistema para que la caja lo compruebe.
+                Es opcional: sin captura, el aviso igual llega. */}
+            <label
+              className="mt-4 flex cursor-pointer items-center gap-3 p-3.5 transition active:scale-[0.99]"
+              style={{
+                borderRadius: 15,
+                border: `1.5px dashed ${proof ? "var(--success)" : "var(--border)"}`,
+                background: proof ? "var(--success-soft)" : "var(--surface-2)",
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) elegirCaptura(f);
+                  e.target.value = "";
+                }}
+              />
+              <span className="text-[26px] leading-none">{proof ? "✓" : "📸"}</span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block text-[14px] font-extrabold"
+                  style={{ color: proof ? "var(--success)" : "var(--text)" }}
+                >
+                  {readingProof
+                    ? t.track.payProofReading
+                    : proof
+                      ? t.track.payProofReady
+                      : t.track.payProofPrompt}
+                </span>
+                <span className="block text-[12px]" style={{ color: "var(--text-faint)" }}>
+                  {proof ? t.track.payProofChange : t.track.payProofHint}
+                </span>
+              </span>
+              {proof && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={proof}
+                  alt=""
+                  className="h-12 w-12 shrink-0 object-cover"
+                  style={{ borderRadius: 10, border: "1px solid var(--border-2)" }}
+                />
+              )}
+            </label>
+
             <button
               onClick={claimPayment}
-              disabled={claiming}
-              className="mt-4 w-full p-[15px] text-[15px] font-extrabold transition active:scale-[0.98] disabled:opacity-60"
+              disabled={claiming || readingProof}
+              className="mt-3 w-full p-[15px] text-[15px] font-extrabold transition active:scale-[0.98] disabled:opacity-60"
               style={{
                 borderRadius: 15,
                 background: "var(--brand)",

@@ -5,6 +5,8 @@ import {
   ErrorDePedido,
   buscarPedido,
   cambiarEstado,
+  cambiarMetodoPago,
+  deshacerCobro,
   informarPago,
   registrarCobro,
   verPedido,
@@ -46,6 +48,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     status?: OrderStatus;
     paymentMethod?: string;
     claimPayment?: boolean;
+    revertPayment?: boolean;
+    // Solo cambiar el método de un cobro ya confirmado, sin tocar operación/monto/propina.
+    changeMethod?: boolean;
+    // Captura que sube el cliente al avisar el pago (data URI base64).
+    proof?: string;
+    // Lo que anota la caja al confirmar: N.º de operación, monto y propina.
+    paymentRef?: string;
+    amountCents?: number;
+    tipCents?: number;
   };
   const db = getDb();
 
@@ -57,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Acción pública (cliente): "ya pagué con Yape/Plin" → queda por confirmar en
   // caja. Es lo único que puede hacer alguien sin PIN.
   if (body.claimPayment) {
-    return NextResponse.json({ order: informarPago(db, id) });
+    return NextResponse.json({ order: informarPago(db, id, body.proof) });
   }
 
   // Acciones de staff: cambiar estado (cocina) y confirmar cobro (caja).
@@ -67,7 +78,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   try {
     if (body.status) cambiarEstado(db, id, body.status);
-    if (body.paymentMethod) registrarCobro(db, id, body.paymentMethod);
+    // Deshacer un cobro puesto por error: vuelve a cuenta abierta. Va antes de
+    // registrarCobro para que un mismo PATCH no revierta y cobre a la vez.
+    if (body.revertPayment) deshacerCobro(db, id);
+    else if (body.changeMethod && body.paymentMethod)
+      cambiarMetodoPago(db, id, body.paymentMethod);
+    else if (body.paymentMethod)
+      registrarCobro(db, id, body.paymentMethod, {
+        ref: body.paymentRef,
+        amountCents: body.amountCents,
+        tipCents: body.tipCents,
+      });
   } catch (e) {
     if (e instanceof ErrorDePedido) {
       return NextResponse.json({ error: e.message }, { status: e.status });

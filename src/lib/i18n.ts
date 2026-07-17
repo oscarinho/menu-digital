@@ -224,6 +224,11 @@ export interface Dict {
     holder: string;
     iPaid: string;
     claiming: string;
+    payProofPrompt: string;
+    payProofHint: string;
+    payProofReading: string;
+    payProofReady: string;
+    payProofChange: string;
     claimedTitle: string;
     claimedPre: string;
     paidWord: string;
@@ -272,6 +277,16 @@ export interface Dict {
     charge: string;
     cancel: string;
     paidToday: string;
+    revert: string;
+    changeMethod: string;
+    verifyTitle: string;
+    proofTitle: string;
+    noProof: string;
+    viewProof: string;
+    opNumber: string;
+    opNumberPh: string;
+    amountReceived: string;
+    tip: string;
   };
   salon: {
     free: string;
@@ -503,6 +518,11 @@ const es: Dict = {
     holder: "Titular",
     iPaid: "Ya pagué",
     claiming: "Avisando…",
+    payProofPrompt: "📸 Sube la captura de tu pago",
+    payProofHint: "Ayuda a la caja a confirmar más rápido",
+    payProofReading: "Preparando tu captura…",
+    payProofReady: "Captura lista",
+    payProofChange: "Tocar para cambiarla",
     claimedTitle: "Pago informado",
     claimedPre: "Avisamos a caja. En cuanto confirmen la transferencia lo verás como ",
     paidWord: "Pagado",
@@ -546,6 +566,16 @@ const es: Dict = {
     charge: "Cobrar",
     cancel: "Cancelar",
     paidToday: "Cobrados hoy",
+    revert: "Deshacer",
+    changeMethod: "Cambiar método",
+    verifyTitle: "Comprobar pago",
+    proofTitle: "Captura del cliente",
+    noProof: "Sin captura — pídele ver el celular",
+    viewProof: "Ver captura",
+    opNumber: "N.º de operación",
+    opNumberPh: "Ej. 15857647",
+    amountReceived: "Monto recibido",
+    tip: "Propina",
   },
   salon: {
     free: "Libre",
@@ -801,6 +831,11 @@ const en: Dict = {
     holder: "Account holder",
     iPaid: "I've paid",
     claiming: "Letting them know…",
+    payProofPrompt: "📸 Upload your payment screenshot",
+    payProofHint: "Helps the cashier confirm faster",
+    payProofReading: "Preparing your screenshot…",
+    payProofReady: "Screenshot ready",
+    payProofChange: "Tap to change it",
     claimedTitle: "Payment reported",
     claimedPre: "We told the cashier. As soon as they confirm the transfer you'll see it as ",
     paidWord: "Paid",
@@ -844,6 +879,16 @@ const en: Dict = {
     charge: "Collect",
     cancel: "Cancel",
     paidToday: "Collected today",
+    revert: "Undo",
+    changeMethod: "Change method",
+    verifyTitle: "Check payment",
+    proofTitle: "Customer's screenshot",
+    noProof: "No screenshot — ask to see the phone",
+    viewProof: "View screenshot",
+    opNumber: "Operation no.",
+    opNumberPh: "e.g. 15857647",
+    amountReceived: "Amount received",
+    tip: "Tip",
   },
   salon: {
     free: "Free",
@@ -1096,6 +1141,11 @@ const zh: Dict = {
     holder: "收款人",
     iPaid: "我已付款",
     claiming: "正在通知…",
+    payProofPrompt: "📸 上传付款截图",
+    payProofHint: "帮助收银更快确认",
+    payProofReading: "正在准备截图…",
+    payProofReady: "截图已就绪",
+    payProofChange: "点击更换",
     claimedTitle: "已告知付款",
     claimedPre: "我们已通知收银台。他们确认到账后，状态会变为",
     paidWord: "已付款",
@@ -1139,6 +1189,16 @@ const zh: Dict = {
     charge: "收款",
     cancel: "取消",
     paidToday: "今日已收款",
+    revert: "撤销",
+    changeMethod: "更改方式",
+    verifyTitle: "核对付款",
+    proofTitle: "客户的截图",
+    noProof: "无截图 — 请查看手机",
+    viewProof: "查看截图",
+    opNumber: "操作号",
+    opNumberPh: "如 15857647",
+    amountReceived: "收到金额",
+    tip: "小费",
   },
   salon: {
     free: "空桌",
